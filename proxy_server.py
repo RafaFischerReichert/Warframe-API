@@ -2,11 +2,21 @@
 """
 Simple proxy server to handle CORS for Warframe Market API
 """
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
 import urllib.parse
 import json
 import ssl
+import threading
+import time
+
+# Semaphore for concurrent requests (max 3)
+concurrent_semaphore = threading.Semaphore(3)
+# List to track timestamps of last requests for rate limiting
+rate_limit_lock = threading.Lock()
+request_timestamps = []  # stores timestamps of last requests
+RATE_LIMIT = 3  # max requests
+RATE_PERIOD = 1.0  # per second
 
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -22,31 +32,44 @@ class ProxyHandler(BaseHTTPRequestHandler):
             print(f"Proxying request: {self.path} -> {api_url}")
             
             try:
-                # Create context to ignore SSL certificate verification
-                context = ssl.create_default_context()
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
-                
-                # Make request to Warframe Market API
-                req = urllib.request.Request(api_url)
-                req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
-                
-                with urllib.request.urlopen(req, context=context) as response:
-                    data = response.read()
-                    content_type = response.headers.get('Content-Type', 'application/json')
+                # Acquire concurrency semaphore
+                with concurrent_semaphore:
+                    # Rate limiting
+                    while True:
+                        with rate_limit_lock:
+                            now = time.time()
+                            # Remove timestamps older than RATE_PERIOD
+                            while request_timestamps and now - request_timestamps[0] > RATE_PERIOD:
+                                request_timestamps.pop(0)
+                            if len(request_timestamps) < RATE_LIMIT:
+                                request_timestamps.append(now)
+                                break
+                        time.sleep(0.05)  # Wait a bit before retrying
+                    # Create context to ignore SSL certificate verification
+                    context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
                     
-                    print(f"API response: status={response.status}, content-type={content_type}, data_length={len(data)}")
-                    print(f"First 100 chars of response: {data[:100]}")
+                    # Make request to Warframe Market API
+                    req = urllib.request.Request(api_url)
+                    req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
                     
-                    # Send response with CORS headers and original status code
-                    self.send_response(response.status)
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-                    self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-                    self.send_header('Content-Type', content_type)
-                    self.send_header('Content-Length', len(data))
-                    self.end_headers()
-                    self.wfile.write(data)
+                    with urllib.request.urlopen(req, context=context) as response:
+                        data = response.read()
+                        content_type = response.headers.get('Content-Type', 'application/json')
+                        
+                        print(f"API response: status={response.status}, content-type={content_type}, data_length={len(data)}")
+                        print(f"First 100 chars of response: {data[:100]}")
+                        
+                        # Send response with CORS headers and original status code
+                        self.send_response(response.status)
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+                        self.send_header('Content-Type', content_type)
+                        self.send_header('Content-Length', str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
                     
             except Exception as e:
                 print(f"Error proxying request: {e}")
@@ -79,7 +102,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Content-Type', content_type)
-                self.send_header('Content-Length', len(content))
+                self.send_header('Content-Length', str(len(content)))
                 self.end_headers()
                 self.wfile.write(content)
                 
@@ -107,7 +130,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
 def run_server(port=8000):
     server_address = ('', port)
-    httpd = HTTPServer(server_address, ProxyHandler)
+    httpd = ThreadingHTTPServer(server_address, ProxyHandler)
     print(f"Proxy server running on http://localhost:{port}")
     print("This server handles CORS and proxies requests to Warframe Market API")
     print("Press Ctrl+C to stop the server")
