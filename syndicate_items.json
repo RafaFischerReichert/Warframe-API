@@ -1,0 +1,479 @@
+{
+  "steel_meridian": {
+    "name": "Steel Meridian",
+    "color": "#ff6b6b",
+    "keywords": ["steel_meridian", "steel meridian"],
+    "items": [
+      {
+        "name": "",
+        "type": "mod",
+        "standing_cost": 25000
+      }
+    ]
+  },
+    "arbiters_of_hexis": {
+    "name": "Arbiters of Hexis",
+    "color": "#4ecdc4",
+    "keywords": ["arbiters_of_hexis", "arbiters of hexis", "arbiter"],
+    "items": [
+      {
+        "name": "Decurion Barrel",
+        "type": "archwing",
+        "standing_cost": 20000
+      },
+      {
+        "name": "Phaedra Barrel",
+        "type": "archwing",
+        "standing_cost": 20000
+      },
+      {
+        "name": "Corvas Barrel",
+        "type": "archwing",
+        "standing_cost": 20000
+      },
+      {
+        "name": "Cyngas Barrel",
+        "type": "archwing",
+        "standing_cost": 20000
+      },
+      {
+        "name": "Centaur Aegis",
+        "type": "archwing",
+        "standing_cost": 20000
+      },
+      {
+        "name": "Gilded Truth",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Blade of Truth",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Avenging Truth",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Stinging Truth",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Seeking Shuriken",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Smoke Shadow",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Fatal Teleport",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Rising Storm",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Elusive Retribution",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Endless Lullaby",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Reactive Storm",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Duality",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Calm and Frenzy",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Peaceful Provocation",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Energy Transfer",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Surging Dash",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Radiant Finish",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Furious Javelin",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Chromatic Blade",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Warrior's Rest",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Shattered Storm",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Mending Splinters",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Spectrosiphon",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Mach Crash",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Thermal Transfer",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Conductive Sphere",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Coil Recharge",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Cathode Current",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Tribunal",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Warding Thurible",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Lasting Covenant",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Desiccation's Curse",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Elemental Sandstorm",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Negation Swarm",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Jade's Judgment",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Omikuji's Fortune",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Rift Haven",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Rift Torrent",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Cataclysmic Continuum",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Savior Decoy",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Damage Decoy",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Hushed Invisibility",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Safeguard Switch",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Irradiating Disarm",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Hall of Malevolence",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Explosive Legerdemain",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Total Eclipse",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Mind Freak",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Pacifying Bolts",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Chaos Sphere",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Assimilate",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Repair Dispensary",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Temporary Artillery",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Temporal Erosion",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Axios Javelineers",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Intrepid Stand",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Shock Trooper",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Shocking Speed",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Transistor Shield",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Capacitance",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Celestial Stomp",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Enveloping Cloud",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Primal Rage",
+        "type": "mod",
+        "standing_cost": 25000
+      },
+      {
+        "name": "Telos Akbolto",
+        "type": "weapon",
+        "standing_cost": 100000
+      },
+      {
+        "name": "Telos Boltor",
+        "type": "weapon",
+        "standing_cost": 125000
+      },
+      {
+        "name": "Telos Boltace",
+        "type": "weapon",
+        "standing_cost": 125000
+      },
+      {
+        "name": "Arbiter's Tribunal Scene",
+        "type": "cosmetic",
+        "standing_cost": 100000
+      },
+      {
+        "name": "Lua Nursery Scene",
+        "type": "cosmetic",
+        "standing_cost": 100000
+      },
+      {
+        "name": "Lua Containment Scene",
+        "type": "cosmetic",
+        "standing_cost": 100000
+      },
+      {
+        "name": "Arbiters of Hexis Stencil",
+        "type": "cosmetic",
+        "standing_cost": 125000
+      },
+      {
+        "name": "Arbiters Combat Emote",
+        "type": "emote",
+        "standing_cost": 70000
+      },
+      {
+        "name": "Arbiters Engineering Emote",
+        "type": "emote",
+        "standing_cost": 70000
+      },
+      {
+        "name": "Arbiters Gunnery Emote",
+        "type": "emote",
+        "standing_cost": 70000
+      },
+      {
+        "name": "Arbiters Piloting Emote",
+        "type": "emote",
+        "standing_cost": 70000
+      },
+      {
+        "name": "Arbiters Endurance Emote",
+        "type": "emote",
+        "standing_cost": 70000
+      },
+      {
+        "name": "Hexis Armor Set",
+        "type": "armor",
+        "standing_cost": 125000
+      },
+      {
+        "name": "Zanuka Arena Simulacrum",
+        "type": "cosmetic",
+        "standing_cost": 100000
+      }
+    ]
+  },
+    "cephalon_suda": {
+    "name": "Cephalon Suda",
+    "color": "#45b7d1",
+    "keywords": ["cephalon_suda", "cephalon suda", "suda"],
+    "items": [
+      {
+        "name": "",
+        "type": "mod",
+        "standing_cost": 25000
+      }
+    ]
+  },
+    "perrin_sequence": {
+    "name": "Perrin Sequence",
+    "color": "#96ceb4",
+    "keywords": ["perrin_sequence", "perrin sequence", "perrin"],
+    "items": [
+      {
+        "name": "",
+        "type": "mod",
+        "standing_cost": 25000
+      }
+    ]
+  },
+    "red_veil": {
+    "name": "Red Veil",
+    "color": "#d63031",
+    "keywords": ["red_veil", "red veil", "veil"],
+    "items": [
+      {
+        "name": "",
+        "type": "mod",
+        "standing_cost": 25000
+      }
+    ]
+  },
+    "new_loka": {
+    "name": "New Loka",
+    "color": "#00b894",
+    "keywords": ["new_loka", "new loka", "loka"],
+    "items": [
+      {
+        "name": "",
+        "type": "mod",
+        "standing_cost": 25000
+      }
+    ]
+  }
+} 
