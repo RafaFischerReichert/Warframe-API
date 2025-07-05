@@ -2,478 +2,483 @@
   "steel_meridian": {
     "name": "Steel Meridian",
     "color": "#ff6b6b",
-    "keywords": ["steel_meridian", "steel meridian"],
+    "keywords": ["steel_meridian", "steel meridian", "steel", "meridian", "sm"],
     "items": [
-      {
-        "name": "",
-        "type": "mod",
-        "standing_cost": 25000
-      }
+      { "name": "Vaykor Marelok", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Vaykor Hek", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Vaykor Sydon", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Kaszas Handle", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Velocitus Receiver", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Corvas Stock", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Fluctus Stock", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Agkuza Guard", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Scattered Justice", "type": "mod", "standing_cost": 25000 },
+      { "name": "Justice Blades", "type": "mod", "standing_cost": 25000 },
+      { "name": "Neutralizing Justice", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shattering Justice", "type": "mod", "standing_cost": 25000 },
+      { "name": "Path of Statues", "type": "mod", "standing_cost": 25000 },
+      { "name": "Tectonic Fracture", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ore Gaze", "type": "mod", "standing_cost": 25000 },
+      { "name": "Titanic Rumbler", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rubble Heap", "type": "mod", "standing_cost": 25000 },
+      { "name": "Recrystallize", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fireball Frenzy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Immolated Radiance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Healing Flame", "type": "mod", "standing_cost": 25000 },
+      { "name": "Exothermic", "type": "mod", "standing_cost": 25000 },
+      { "name": "Surging Dash", "type": "mod", "standing_cost": 25000 },
+      { "name": "Radiant Finish", "type": "mod", "standing_cost": 25000 },
+      { "name": "Furious Javelin", "type": "mod", "standing_cost": 25000 },
+      { "name": "Chromatic Blade", "type": "mod", "standing_cost": 25000 },
+      { "name": "Freeze Force", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ice Wave Impedance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Chilling Globe", "type": "mod", "standing_cost": 25000 },
+      { "name": "Icy Avalanche", "type": "mod", "standing_cost": 25000 },
+      { "name": "Biting Frost", "type": "mod", "standing_cost": 25000 },
+      { "name": "Dread Ward", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blood Forge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blending Talons", "type": "mod", "standing_cost": 25000 },
+      { "name": "Gourmand", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hearty Nourishment", "type": "mod", "standing_cost": 25000 },
+      { "name": "Catapult", "type": "mod", "standing_cost": 25000 },
+      { "name": "Accumulating Whipclaw", "type": "mod", "standing_cost": 25000 },
+      { "name": "Venari Bodyguard", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pilfering Strangledome", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mesa's Waltz", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ballistic Bullseye", "type": "mod", "standing_cost": 25000 },
+      { "name": "Staggering Shield", "type": "mod", "standing_cost": 25000 },
+      { "name": "Muzzle Flash", "type": "mod", "standing_cost": 25000 },
+      { "name": "Wrath of Ukko", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pyroclastic Flow", "type": "mod", "standing_cost": 25000 },
+      { "name": "Reaping Chakram", "type": "mod", "standing_cost": 25000 },
+      { "name": "Safeguard", "type": "mod", "standing_cost": 25000 },
+      { "name": "Divine Retribution", "type": "mod", "standing_cost": 25000 },
+      { "name": "Controlled Slide", "type": "mod", "standing_cost": 25000 },
+      { "name": "Teeming Virulence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Larva Burst", "type": "mod", "standing_cost": 25000 },
+      { "name": "Parasitic Vitality", "type": "mod", "standing_cost": 25000 },
+      { "name": "Insatiable", "type": "mod", "standing_cost": 25000 },
+      { "name": "Abundant Mutation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Neutron Star", "type": "mod", "standing_cost": 25000 },
+      { "name": "Antimatter Absorb", "type": "mod", "standing_cost": 25000 },
+      { "name": "Escape Velocity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Molecular Fission", "type": "mod", "standing_cost": 25000 },
+      { "name": "Smite Infusion", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hallowed Eruption", "type": "mod", "standing_cost": 25000 },
+      { "name": "Phoenix Renewal", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hallowed Reckoning", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ironclad Charge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Iron Shrapnel", "type": "mod", "standing_cost": 25000 },
+      { "name": "Piercing Roar", "type": "mod", "standing_cost": 25000 },
+      { "name": "Reinforcing Stomp", "type": "mod", "standing_cost": 25000 },
+      { "name": "Regenerative Molt", "type": "mod", "standing_cost": 25000 },
+      { "name": "Contagion Cloud", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ulfrun's Endurance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Vampiric Grasp", "type": "mod", "standing_cost": 25000 },
+      { "name": "The Relentless Lost", "type": "mod", "standing_cost": 25000 },
+      { "name": "Exilus Weapon Adapter Blueprint", "type": "blueprint", "standing_cost": 75000 }
     ]
   },
-    "arbiters_of_hexis": {
+  "arbiters_of_hexis": {
     "name": "Arbiters of Hexis",
     "color": "#4ecdc4",
-    "keywords": ["arbiters_of_hexis", "arbiters of hexis", "arbiter"],
+    "keywords": ["arbiters_of_hexis", "arbiters of hexis", "arbiter", "arbiters", "hexis", "ao", "aohexis", "aoh", "ah"],
     "items": [
-      {
-        "name": "Decurion Barrel",
-        "type": "archwing",
-        "standing_cost": 20000
-      },
-      {
-        "name": "Phaedra Barrel",
-        "type": "archwing",
-        "standing_cost": 20000
-      },
-      {
-        "name": "Corvas Barrel",
-        "type": "archwing",
-        "standing_cost": 20000
-      },
-      {
-        "name": "Cyngas Barrel",
-        "type": "archwing",
-        "standing_cost": 20000
-      },
-      {
-        "name": "Centaur Aegis",
-        "type": "archwing",
-        "standing_cost": 20000
-      },
-      {
-        "name": "Gilded Truth",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Blade of Truth",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Avenging Truth",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Stinging Truth",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Seeking Shuriken",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Smoke Shadow",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Fatal Teleport",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Rising Storm",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Elusive Retribution",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Endless Lullaby",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Reactive Storm",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Duality",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Calm and Frenzy",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Peaceful Provocation",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Energy Transfer",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Surging Dash",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Radiant Finish",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Furious Javelin",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Chromatic Blade",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Warrior's Rest",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Shattered Storm",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Mending Splinters",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Spectrosiphon",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Mach Crash",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Thermal Transfer",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Conductive Sphere",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Coil Recharge",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Cathode Current",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Tribunal",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Warding Thurible",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Lasting Covenant",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Desiccation's Curse",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Elemental Sandstorm",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Negation Swarm",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Jade's Judgment",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Omikuji's Fortune",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Rift Haven",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Rift Torrent",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Cataclysmic Continuum",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Savior Decoy",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Damage Decoy",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Hushed Invisibility",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Safeguard Switch",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Irradiating Disarm",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Hall of Malevolence",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Explosive Legerdemain",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Total Eclipse",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Mind Freak",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Pacifying Bolts",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Chaos Sphere",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Assimilate",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Repair Dispensary",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Temporary Artillery",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Temporal Erosion",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Axios Javelineers",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Intrepid Stand",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Shock Trooper",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Shocking Speed",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Transistor Shield",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Capacitance",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Celestial Stomp",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Enveloping Cloud",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Primal Rage",
-        "type": "mod",
-        "standing_cost": 25000
-      },
-      {
-        "name": "Telos Akbolto",
-        "type": "weapon",
-        "standing_cost": 100000
-      },
-      {
-        "name": "Telos Boltor",
-        "type": "weapon",
-        "standing_cost": 125000
-      },
-      {
-        "name": "Telos Boltace",
-        "type": "weapon",
-        "standing_cost": 125000
-      },
-      {
-        "name": "Arbiter's Tribunal Scene",
-        "type": "cosmetic",
-        "standing_cost": 100000
-      },
-      {
-        "name": "Lua Nursery Scene",
-        "type": "cosmetic",
-        "standing_cost": 100000
-      },
-      {
-        "name": "Lua Containment Scene",
-        "type": "cosmetic",
-        "standing_cost": 100000
-      },
-      {
-        "name": "Arbiters of Hexis Stencil",
-        "type": "cosmetic",
-        "standing_cost": 125000
-      },
-      {
-        "name": "Arbiters Combat Emote",
-        "type": "emote",
-        "standing_cost": 70000
-      },
-      {
-        "name": "Arbiters Engineering Emote",
-        "type": "emote",
-        "standing_cost": 70000
-      },
-      {
-        "name": "Arbiters Gunnery Emote",
-        "type": "emote",
-        "standing_cost": 70000
-      },
-      {
-        "name": "Arbiters Piloting Emote",
-        "type": "emote",
-        "standing_cost": 70000
-      },
-      {
-        "name": "Arbiters Endurance Emote",
-        "type": "emote",
-        "standing_cost": 70000
-      },
-      {
-        "name": "Hexis Armor Set",
-        "type": "armor",
-        "standing_cost": 125000
-      },
-      {
-        "name": "Zanuka Arena Simulacrum",
-        "type": "cosmetic",
-        "standing_cost": 100000
-      }
+      { "name": "Decurion Barrel", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Phaedra Barrel", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Corvas Barrel", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Cyngas Barrel", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Centaur Aegis", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Gilded Truth", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blade of Truth", "type": "mod", "standing_cost": 25000 },
+      { "name": "Avenging Truth", "type": "mod", "standing_cost": 25000 },
+      { "name": "Stinging Truth", "type": "mod", "standing_cost": 25000 },
+      { "name": "Seeking Shuriken", "type": "mod", "standing_cost": 25000 },
+      { "name": "Smoke Shadow", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fatal Teleport", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rising Storm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Elusive Retribution", "type": "mod", "standing_cost": 25000 },
+      { "name": "Endless Lullaby", "type": "mod", "standing_cost": 25000 },
+      { "name": "Reactive Storm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Duality", "type": "mod", "standing_cost": 25000 },
+      { "name": "Calm and Frenzy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Peaceful Provocation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Energy Transfer", "type": "mod", "standing_cost": 25000 },
+      { "name": "Surging Dash", "type": "mod", "standing_cost": 25000 },
+      { "name": "Radiant Finish", "type": "mod", "standing_cost": 25000 },
+      { "name": "Furious Javelin", "type": "mod", "standing_cost": 25000 },
+      { "name": "Chromatic Blade", "type": "mod", "standing_cost": 25000 },
+      { "name": "Warrior's Rest", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shattered Storm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mending Splinters", "type": "mod", "standing_cost": 25000 },
+      { "name": "Spectrosiphon", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mach Crash", "type": "mod", "standing_cost": 25000 },
+      { "name": "Thermal Transfer", "type": "mod", "standing_cost": 25000 },
+      { "name": "Conductive Sphere", "type": "mod", "standing_cost": 25000 },
+      { "name": "Coil Recharge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Cathode Current", "type": "mod", "standing_cost": 25000 },
+      { "name": "Tribunal", "type": "mod", "standing_cost": 25000 },
+      { "name": "Warding Thurible", "type": "mod", "standing_cost": 25000 },
+      { "name": "Lasting Covenant", "type": "mod", "standing_cost": 25000 },
+      { "name": "Desiccation's Curse", "type": "mod", "standing_cost": 25000 },
+      { "name": "Elemental Sandstorm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Negation Swarm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Jade's Judgment", "type": "mod", "standing_cost": 25000 },
+      { "name": "Omikuji's Fortune", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rift Haven", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rift Torrent", "type": "mod", "standing_cost": 25000 },
+      { "name": "Cataclysmic Continuum", "type": "mod", "standing_cost": 25000 },
+      { "name": "Savior Decoy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Damage Decoy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hushed Invisibility", "type": "mod", "standing_cost": 25000 },
+      { "name": "Safeguard Switch", "type": "mod", "standing_cost": 25000 },
+      { "name": "Irradiating Disarm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hall of Malevolence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Explosive Legerdemain", "type": "mod", "standing_cost": 25000 },
+      { "name": "Total Eclipse", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mind Freak", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pacifying Bolts", "type": "mod", "standing_cost": 25000 },
+      { "name": "Chaos Sphere", "type": "mod", "standing_cost": 25000 },
+      { "name": "Assimilate", "type": "mod", "standing_cost": 25000 },
+      { "name": "Repair Dispensary", "type": "mod", "standing_cost": 25000 },
+      { "name": "Temporary Artillery", "type": "mod", "standing_cost": 25000 },
+      { "name": "Temporal Erosion", "type": "mod", "standing_cost": 25000 },
+      { "name": "Axios Javelineers", "type": "mod", "standing_cost": 25000 },
+      { "name": "Intrepid Stand", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shock Trooper", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shocking Speed", "type": "mod", "standing_cost": 25000 },
+      { "name": "Transistor Shield", "type": "mod", "standing_cost": 25000 },
+      { "name": "Capacitance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Celestial Stomp", "type": "mod", "standing_cost": 25000 },
+      { "name": "Enveloping Cloud", "type": "mod", "standing_cost": 25000 },
+      { "name": "Primal Rage", "type": "mod", "standing_cost": 25000 },
+      { "name": "Telos Akbolto", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Telos Boltor", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Telos Boltace", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Arbiter's Tribunal Scene", "type": "cosmetic", "standing_cost": 100000 },
+      { "name": "Lua Nursery Scene", "type": "cosmetic", "standing_cost": 100000 },
+      { "name": "Lua Containment Scene", "type": "cosmetic", "standing_cost": 100000 },
+      { "name": "Arbiters of Hexis Stencil", "type": "cosmetic", "standing_cost": 125000 },
+      { "name": "Arbiters Combat Emote", "type": "emote", "standing_cost": 70000 },
+      { "name": "Arbiters Engineering Emote", "type": "emote", "standing_cost": 70000 },
+      { "name": "Arbiters Gunnery Emote", "type": "emote", "standing_cost": 70000 },
+      { "name": "Arbiters Piloting Emote", "type": "emote", "standing_cost": 70000 },
+      { "name": "Arbiters Endurance Emote", "type": "emote", "standing_cost": 70000 },
+      { "name": "Hexis Armor Set", "type": "armor", "standing_cost": 125000 },
+      { "name": "Zanuka Arena Simulacrum", "type": "cosmetic", "standing_cost": 100000 }
     ]
   },
     "cephalon_suda": {
     "name": "Cephalon Suda",
     "color": "#45b7d1",
-    "keywords": ["cephalon_suda", "cephalon suda", "suda"],
+    "keywords": ["cephalon_suda", "cephalon suda", "suda", "cephalon", "cs"],
     "items": [
-      {
-        "name": "",
-        "type": "mod",
-        "standing_cost": 25000
-      }
+      { "name": "Synoid Gammacor", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Synoid Simulor", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Synoid Heliocor", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Decurion Receiver", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Velocitus Barrel", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Corvas Receiver", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Cyngas Receiver", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Fluctus Barrel", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Entropy Flight", "type": "mod", "standing_cost": 25000 },
+      { "name": "Entropy Detonation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Entropy Burst", "type": "mod", "standing_cost": 25000 },
+      { "name": "Entropy Spike", "type": "mod", "standing_cost": 25000 },
+      { "name": "Sonic Fracture", "type": "mod", "standing_cost": 25000 },
+      { "name": "Resonance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Savage Silence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Resonating Quake", "type": "mod", "standing_cost": 25000 },
+      { "name": "Razor Moter", "type": "mod", "standing_cost": 25000 },
+      { "name": "Afterburn", "type": "mod", "standing_cost": 25000 },
+      { "name": "Everlasting Ward", "type": "mod", "standing_cost": 25000 },
+      { "name": "Vexing Retaliation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Guardian Armor", "type": "mod", "standing_cost": 25000 },
+      { "name": "Guided Effigy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Freeze Force", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ice Wave Impedance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Chilling Globe", "type": "mod", "standing_cost": 25000 },
+      { "name": "Icy Avalanche", "type": "mod", "standing_cost": 25000 },
+      { "name": "Biting Frost", "type": "mod", "standing_cost": 25000 },
+      { "name": "Balefire Surge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blazing Pillage", "type": "mod", "standing_cost": 25000 },
+      { "name": "Aegis Gale", "type": "mod", "standing_cost": 25000 },
+      { "name": "Viral Tempest", "type": "mod", "standing_cost": 25000 },
+      { "name": "Tidal Impunity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rousing Plunder", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pilfering Swarm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Empowered Quiver", "type": "mod", "standing_cost": 25000 },
+      { "name": "Piercing Navigator", "type": "mod", "standing_cost": 25000 },
+      { "name": "Infiltrate", "type": "mod", "standing_cost": 25000 },
+      { "name": "Concentrated Arrow", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rift Haven", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rift Torrent", "type": "mod", "standing_cost": 25000 },
+      { "name": "Cataclysmic Continuum", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hall of Malevolence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Explosive Legerdemain", "type": "mod", "standing_cost": 25000 },
+      { "name": "Total Eclipse", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pyroclastic Flow", "type": "mod", "standing_cost": 25000 },
+      { "name": "Reaping Chakram", "type": "mod", "standing_cost": 25000 },
+      { "name": "Safeguard", "type": "mod", "standing_cost": 25000 },
+      { "name": "Divine Retribution", "type": "mod", "standing_cost": 25000 },
+      { "name": "Controlled Slide", "type": "mod", "standing_cost": 25000 },
+      { "name": "Neutron Star", "type": "mod", "standing_cost": 25000 },
+      { "name": "Antimatter Absorb", "type": "mod", "standing_cost": 25000 },
+      { "name": "Escape Velocity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Molecular Fission", "type": "mod", "standing_cost": 25000 },
+      { "name": "Partitioned Mallet", "type": "mod", "standing_cost": 25000 },
+      { "name": "Conductor", "type": "mod", "standing_cost": 25000 },
+      { "name": "Wrecking Wall", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fused Crucible", "type": "mod", "standing_cost": 25000 },
+      { "name": "Thrall Pact", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mesmer Shield", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blinding Reave", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shadow Haze", "type": "mod", "standing_cost": 25000 },
+      { "name": "Dark Propagation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Tesla Bank", "type": "mod", "standing_cost": 25000 },
+      { "name": "Repelling Bastille", "type": "mod", "standing_cost": 25000 },
+      { "name": "Photon Repeater", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fused Reservoir", "type": "mod", "standing_cost": 25000 },
+      { "name": "Critical Surge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Cataclysmic Gate", "type": "mod", "standing_cost": 25000 },
+      { "name": "Vampiric Grasp", "type": "mod", "standing_cost": 25000 },
+      { "name": "The Relentless Lost", "type": "mod", "standing_cost": 25000 },
+      { "name": "Merulina Guardian", "type": "mod", "standing_cost": 25000 },
+      { "name": "Loyal Merulina", "type": "mod", "standing_cost": 25000 },
+      { "name": "Surging Blades", "type": "mod", "standing_cost": 25000 }
     ]
   },
     "perrin_sequence": {
     "name": "Perrin Sequence",
     "color": "#96ceb4",
-    "keywords": ["perrin_sequence", "perrin sequence", "perrin"],
+    "keywords": ["perrin_sequence", "perrin sequence", "perrin", "sequence", "ps"],
     "items": [
-      {
-        "name": "",
-        "type": "mod",
-        "standing_cost": 25000
-      }
+      { "name": "Secura Penta", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Secura Dual Cestra", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Secura Lecta", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Onorix Handle", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Phaedra Receiver", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Centaur Blade", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Cyngas Stock", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Toxic Sequence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Deadly Sequence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Voltage Sequence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Sequence Burn", "type": "mod", "standing_cost": 25000 },
+      { "name": "Sonic Fracture", "type": "mod", "standing_cost": 25000 },
+      { "name": "Resonance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Savage Silence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Afterburn", "type": "mod", "standing_cost": 25000 },
+      { "name": "Everlasting Ward", "type": "mod", "standing_cost": 25000 },
+      { "name": "Vexing Retaliation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Guardian Armor", "type": "mod", "standing_cost": 25000 },
+      { "name": "Guided Effigy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mach Crash", "type": "mod", "standing_cost": 25000 },
+      { "name": "Thermal Transfer", "type": "mod", "standing_cost": 25000 },
+      { "name": "Cathode Current", "type": "mod", "standing_cost": 25000 },
+      { "name": "Balefire Surge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blazing Pillage", "type": "mod", "standing_cost": 25000 },
+      { "name": "Desiccation's Curse", "type": "mod", "standing_cost": 25000 },
+      { "name": "Elemental Sandstorm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Negation Armor", "type": "mod", "standing_cost": 25000 },
+      { "name": "Empowered Quiver", "type": "mod", "standing_cost": 25000 },
+      { "name": "Piercing Navigator", "type": "mod", "standing_cost": 25000 },
+      { "name": "Infiltrate", "type": "mod", "standing_cost": 25000 },
+      { "name": "Concentrated Arrow", "type": "mod", "standing_cost": 25000 },
+      { "name": "Greedy Pull", "type": "mod", "standing_cost": 25000 },
+      { "name": "Magnetized Discharge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Counter Pulse", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fracturing Crush", "type": "mod", "standing_cost": 25000 },
+      { "name": "Soul Survivor", "type": "mod", "standing_cost": 25000 },
+      { "name": "Creeping Terrify", "type": "mod", "standing_cost": 25000 },
+      { "name": "Despoil", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shield of Shadows", "type": "mod", "standing_cost": 25000 },
+      { "name": "Teeming Virulence", "type": "mod", "standing_cost": 25000 },
+      { "name": "Larva Burst", "type": "mod", "standing_cost": 25000 },
+      { "name": "Parasitic Vitality", "type": "mod", "standing_cost": 25000 },
+      { "name": "Insatiable", "type": "mod", "standing_cost": 25000 },
+      { "name": "Abundant Mutation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Repair Dispensary", "type": "mod", "standing_cost": 25000 },
+      { "name": "Temporal Erosion", "type": "mod", "standing_cost": 25000 },
+      { "name": "Thrall Pact", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mesmer Shield", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blinding Reave", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ironclad Charge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Iron Shrapnel", "type": "mod", "standing_cost": 25000 },
+      { "name": "Piercing Roar", "type": "mod", "standing_cost": 25000 },
+      { "name": "Reinforcing Stomp", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pool of Life", "type": "mod", "standing_cost": 25000 },
+      { "name": "Vampire Leech", "type": "mod", "standing_cost": 25000 },
+      { "name": "Abating Link", "type": "mod", "standing_cost": 25000 },
+      { "name": "Champion's Blessing", "type": "mod", "standing_cost": 25000 },
+      { "name": "Swing Line", "type": "mod", "standing_cost": 25000 },
+      { "name": "Eternal War", "type": "mod", "standing_cost": 25000 },
+      { "name": "Prolonged Paralysis", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hysterical Assault", "type": "mod", "standing_cost": 25000 },
+      { "name": "Enraged", "type": "mod", "standing_cost": 25000 },
+      { "name": "Repelling Bastille", "type": "mod", "standing_cost": 25000 },
+      { "name": "Photon Repeater", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shadow Haze", "type": "mod", "standing_cost": 25000 },
+      { "name": "Secura Penta", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Secura Lecta", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Secura Dual Cestra", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Secura Syandana", "type": "cosmetic", "standing_cost": 100000 },
+      { "name": "Exilus Weapon Adapter Blueprint", "type": "blueprint", "standing_cost": 75000 }
     ]
   },
     "red_veil": {
     "name": "Red Veil",
     "color": "#d63031",
-    "keywords": ["red_veil", "red veil", "veil"],
+    "keywords": ["red_veil", "red veil", "veil", "red", "rv"],
     "items": [
-      {
-        "name": "",
-        "type": "mod",
-        "standing_cost": 25000
-      }
+      { "name": "Rakta Cernos", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Rakta Dark Dagger", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Rakta Ballistica", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Kaszás Blade", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Velocitus Stock", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Rathbone Handle", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Agkuza Handle", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Fluctus Limb", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Gleaming Blight", "type": "mod", "standing_cost": 25000 },
+      { "name": "Eroding Blight", "type": "mod", "standing_cost": 25000 },
+      { "name": "Stockpiled Blight", "type": "mod", "standing_cost": 25000 },
+      { "name": "Toxic Blight", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fatal Teleport", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rising Storm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Seeking Shuriken", "type": "mod", "standing_cost": 25000 },
+      { "name": "Smoke Shadow", "type": "mod", "standing_cost": 25000 },
+      { "name": "Path of Statues", "type": "mod", "standing_cost": 25000 },
+      { "name": "Tectonic Fracture", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ore Gaze", "type": "mod", "standing_cost": 25000 },
+      { "name": "Titanic Rumbler", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rubble Heap", "type": "mod", "standing_cost": 25000 },
+      { "name": "Recrystallize", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fireball Frenzy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Immolated Radiance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Healing Flame", "type": "mod", "standing_cost": 25000 },
+      { "name": "Exothermic", "type": "mod", "standing_cost": 25000 },
+      { "name": "Warrior's Rest", "type": "mod", "standing_cost": 25000 },
+      { "name": "Dread Ward", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blood Forge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Blending Talons", "type": "mod", "standing_cost": 25000 },
+      { "name": "Gourmand", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hearty Nourishment", "type": "mod", "standing_cost": 25000 },
+      { "name": "Catapult", "type": "mod", "standing_cost": 25000 },
+      { "name": "Tribunal", "type": "mod", "standing_cost": 25000 },
+      { "name": "Warding Thurible", "type": "mod", "standing_cost": 25000 },
+      { "name": "Lasting Covenant", "type": "mod", "standing_cost": 25000 },
+      { "name": "Accumulating Whipclaw", "type": "mod", "standing_cost": 25000 },
+      { "name": "Venari Bodyguard", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pilfering Strangledome", "type": "mod", "standing_cost": 25000 },
+      { "name": "Swift Bite", "type": "mod", "standing_cost": 25000 },
+      { "name": "Valence Formation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Savior Decoy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Damage Decoy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hushed Invisibility", "type": "mod", "standing_cost": 25000 },
+      { "name": "Safeguard Switch", "type": "mod", "standing_cost": 25000 },
+      { "name": "Irradiating Disarm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ballistic Bullseye", "type": "mod", "standing_cost": 25000 },
+      { "name": "Staggering Shield", "type": "mod", "standing_cost": 25000 },
+      { "name": "Muzzle Flash", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mesa's Waltz", "type": "mod", "standing_cost": 25000 },
+      { "name": "Soul Survivor", "type": "mod", "standing_cost": 25000 },
+      { "name": "Creeping Terrify", "type": "mod", "standing_cost": 25000 },
+      { "name": "Despoil", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shield of Shadows", "type": "mod", "standing_cost": 25000 },
+      { "name": "Venom Dose", "type": "mod", "standing_cost": 25000 },
+      { "name": "Revealing Spores", "type": "mod", "standing_cost": 25000 },
+      { "name": "Regenerative Molt", "type": "mod", "standing_cost": 25000 },
+      { "name": "Contagion Cloud", "type": "mod", "standing_cost": 25000 },
+      { "name": "Spellbound Harvest", "type": "mod", "standing_cost": 25000 },
+      { "name": "Beguiling Lantern", "type": "mod", "standing_cost": 25000 },
+      { "name": "Razorwing Blitz", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ironclad Flight", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shock Trooper", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shocking Speed", "type": "mod", "standing_cost": 25000 },
+      { "name": "Jet Stream", "type": "mod", "standing_cost": 25000 },
+      { "name": "Funnel Clouds", "type": "mod", "standing_cost": 25000 },
+      { "name": "Anchored Glide", "type": "mod", "standing_cost": 25000 },
+      { "name": "Capacitance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ulfrun's Endurance", "type": "mod", "standing_cost": 25000 },
+      { "name": "Assassin Sigil", "type": "cosmetic", "standing_cost": 30000 },
+      { "name": "Exilus Weapon Adapter Blueprint", "type": "blueprint", "standing_cost": 75000 }
     ]
   },
     "new_loka": {
     "name": "New Loka",
     "color": "#00b894",
-    "keywords": ["new_loka", "new loka", "loka"],
+    "keywords": ["new_loka", "new loka", "loka", "new", "nl"],
     "items": [
-      {
-        "name": "",
-        "type": "mod",
-        "standing_cost": 25000
-      }
+      { "name": "Sancti Magistar", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Sancti Castanas", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Sancti Tigris", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Onorix Blade", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Phaedra Stock", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Rathbone Head", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Agkuza Blade", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Centaur Handle", "type": "archwing", "standing_cost": 20000 },
+      { "name": "Winds of Purity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Disarming Purity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Bright Purity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Lasting Purity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Reactive Storm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Duality", "type": "mod", "standing_cost": 25000 },
+      { "name": "Calm & Frenzy", "type": "mod", "standing_cost": 25000 },
+      { "name": "Peaceful Provocation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Energy Transfer", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shattered Storm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mending Splinters", "type": "mod", "standing_cost": 25000 },
+      { "name": "Spectrosiphon", "type": "mod", "standing_cost": 25000 },
+      { "name": "Viral Tempest", "type": "mod", "standing_cost": 25000 },
+      { "name": "Tidal Impunity", "type": "mod", "standing_cost": 25000 },
+      { "name": "Rousing Plunder", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pilfering Swarm", "type": "mod", "standing_cost": 25000 },
+      { "name": "Wrath of Ukko", "type": "mod", "standing_cost": 25000 },
+      { "name": "Swift Bite", "type": "mod", "standing_cost": 25000 },
+      { "name": "Valence Formation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Fracturing Crush", "type": "mod", "standing_cost": 25000 },
+      { "name": "Mind Freak", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pacifying Bolts", "type": "mod", "standing_cost": 25000 },
+      { "name": "Chaos Sphere", "type": "mod", "standing_cost": 25000 },
+      { "name": "Assimilate", "type": "mod", "standing_cost": 25000 },
+      { "name": "Phoenix Renewal", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hallowed Reckoning", "type": "mod", "standing_cost": 25000 },
+      { "name": "Partitioned Mallet", "type": "mod", "standing_cost": 25000 },
+      { "name": "Conductor", "type": "mod", "standing_cost": 25000 },
+      { "name": "Spellbound Harvest", "type": "mod", "standing_cost": 25000 },
+      { "name": "Beguiling Lantern", "type": "mod", "standing_cost": 25000 },
+      { "name": "Razorwing Blitz", "type": "mod", "standing_cost": 25000 },
+      { "name": "Ironclad Flight", "type": "mod", "standing_cost": 25000 },
+      { "name": "Axios Javelineers", "type": "mod", "standing_cost": 25000 },
+      { "name": "Intrepid Stand", "type": "mod", "standing_cost": 25000 },
+      { "name": "Pool of Life", "type": "mod", "standing_cost": 25000 },
+      { "name": "Vampire Leech", "type": "mod", "standing_cost": 25000 },
+      { "name": "Abating Link", "type": "mod", "standing_cost": 25000 },
+      { "name": "Champion's Blessing", "type": "mod", "standing_cost": 25000 },
+      { "name": "Swing Line", "type": "mod", "standing_cost": 25000 },
+      { "name": "Eternal War", "type": "mod", "standing_cost": 25000 },
+      { "name": "Prolonged Paralysis", "type": "mod", "standing_cost": 25000 },
+      { "name": "Hysterical Assault", "type": "mod", "standing_cost": 25000 },
+      { "name": "Enraged", "type": "mod", "standing_cost": 25000 },
+      { "name": "Repelling Bastille", "type": "mod", "standing_cost": 25000 },
+      { "name": "Photon Repeater", "type": "mod", "standing_cost": 25000 },
+      { "name": "Shadow Haze", "type": "mod", "standing_cost": 25000 },
+      { "name": "Sancti Magistar", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Sancti Syandana", "type": "cosmetic", "standing_cost": 100000 },
+      { "name": "Sancti Castanas", "type": "weapon", "standing_cost": 100000 },
+      { "name": "Sancti Tigris", "type": "weapon", "standing_cost": 125000 },
+      { "name": "Exilus Weapon Adapter Blueprint", "type": "blueprint", "standing_cost": 75000 },
+      { "name": "Fused Reservoir", "type": "mod", "standing_cost": 25000 },
+      { "name": "Critical Surge", "type": "mod", "standing_cost": 25000 },
+      { "name": "Target Fixation", "type": "mod", "standing_cost": 25000 },
+      { "name": "Airburst Rounds", "type": "mod", "standing_cost": 25000 },
+      { "name": "Jet Stream", "type": "mod", "standing_cost": 25000 },
+      { "name": "Funnel Clouds", "type": "mod", "standing_cost": 25000 },
+      { "name": "Anchored Glide", "type": "mod", "standing_cost": 25000 },
+      { "name": "Celestial Stomp", "type": "mod", "standing_cost": 25000 },
+      { "name": "Enveloping Cloud", "type": "mod", "standing_cost": 25000 },
+      { "name": "Primal Rage", "type": "mod", "standing_cost": 25000 },
+      { "name": "Loyal Merulina", "type": "mod", "standing_cost": 25000 },
+      { "name": "Surging Blades", "type": "mod", "standing_cost": 25000 }
     ]
   }
 } 
