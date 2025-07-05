@@ -14,7 +14,7 @@
     "arbiters_of_hexis": {
     "name": "Arbiters of Hexis",
     "color": "#4ecdc4",
-    "keywords": ["arbiters_of_hexis", "arbiters of hexis", "arbiter"],
+    "keywords": ["arbiters_of_hexis", "arbiters of hexis", "arbiter", "arbiters", "hexis"],
     "items": [
       {
         "name": "Decurion Barrel",
@@ -431,7 +431,7 @@
     "cephalon_suda": {
     "name": "Cephalon Suda",
     "color": "#45b7d1",
-    "keywords": ["cephalon_suda", "cephalon suda", "suda"],
+    "keywords": ["cephalon_suda", "cephalon suda", "suda", "cephalon"],
     "items": [
       { "name": "Synoid Gammacor", "type": "weapon", "standing_cost": 100000 },
       { "name": "Synoid Simulor", "type": "weapon", "standing_cost": 125000 },
