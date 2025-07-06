@@ -227,10 +227,22 @@ async function searchSyndicateMods() {
     const searchTerms = searchTerm.split(',').map(s => s.trim()).filter(Boolean);
     // Find all matching syndicates (unique)
     const matchedKeys = new Set();
-    for (const term of searchTerms) {
+    
+    // Check if "all" is in the search terms
+    const isAllSyndicates = searchTerms.some(term => term.toLowerCase() === 'all');
+    
+    if (isAllSyndicates) {
+        // Include all syndicates
         for (const [key, data] of Object.entries(SYNDICATES)) {
-            if (data.keywords.some(keyword => term === keyword || keyword.includes(term) || term.includes(keyword))) {
-                matchedKeys.add(key);
+            matchedKeys.add(key);
+        }
+    } else {
+        // Normal syndicate matching
+        for (const term of searchTerms) {
+            for (const [key, data] of Object.entries(SYNDICATES)) {
+                if (data.keywords.some(keyword => term === keyword || keyword.includes(term) || term.includes(keyword))) {
+                    matchedKeys.add(key);
+                }
             }
         }
     }
@@ -401,6 +413,14 @@ function displayCombinedResults(items, heading, color) {
 }
 
 function renderFilteredItems() {
+    // Sort items: available (with price) first, then by efficiency ascending (lowest to highest)
+    const sortedItems = [...lastDisplayedItems].sort((a, b) => {
+        if (a.price && !b.price) return -1;
+        if (!a.price && b.price) return 1;
+        if (a.efficiency != null && b.efficiency != null) return a.efficiency - b.efficiency;
+        return 0;
+    });
+    
     // Only apply filter if button is clicked, not on every input change
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = `
@@ -410,7 +430,7 @@ function renderFilteredItems() {
             <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
         </div>
         <div class="items-grid">
-            ${lastDisplayedItems.map(item => `
+            ${sortedItems.map(item => `
                 <div class="item-card" style="border-color: ${item.color};">
                     <div class="item-name">${item.name}</div>
                     <div class="item-category">${item.type}</div>
