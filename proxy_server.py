@@ -79,6 +79,34 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.handle_rate_limit_status_endpoint()
             return
         
+        # Handle trading workflow endpoints (POST only)
+        if self.path == '/trading/create-wtb':
+            self.send_response(405)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Method not allowed'})
+            self.wfile.write(error_response.encode())
+            return
+        
+        if self.path == '/trading/create-wts':
+            self.send_response(405)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Method not allowed'})
+            self.wfile.write(error_response.encode())
+            return
+        
+        if self.path == '/trading/delete-order':
+            self.send_response(405)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Method not allowed'})
+            self.wfile.write(error_response.encode())
+            return
+        
         if self.path.startswith('/api/'):
             # Proxy the request to Warframe Market API
             api_path = self.path[5:]  # Remove '/api/' prefix
@@ -220,6 +248,17 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.handle_auth_status_endpoint()
             return
         
+        # Handle trading workflow endpoints
+        elif self.path == '/trading/create-wtb':
+            self.handle_create_wtb_endpoint(post_data)
+            return
+        elif self.path == '/trading/create-wts':
+            self.handle_create_wts_endpoint(post_data)
+            return
+        elif self.path == '/trading/delete-order':
+            self.handle_delete_order_endpoint(post_data)
+            return
+        
         if self.path.startswith('/api/'):
             # Proxy POST requests to Warframe Market API
             api_path = self.path[5:]  # Remove '/api/' prefix
@@ -269,9 +308,25 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 else:
                     # Try to get auth headers from our auth handler
                     auth_headers = get_auth_headers()
+                    jwt_token = None
                     if auth_headers:
                         for key, value in auth_headers.items():
                             req.add_header(key, value)
+                            if key.lower() == 'authorization' and value.lower().startswith('bearer '):
+                                jwt_token = value[7:]
+                        # Also add JWT as a cookie if available
+                        if jwt_token:
+                            req.add_header('Cookie', f'JWT={jwt_token}')
+                            print(f"[DEBUG] Added Cookie header: JWT={jwt_token}")
+                    else:
+                        print("[DEBUG] No auth headers available for POST request.")
+                
+                # Debug: print outgoing request details
+                print(f"[DEBUG] Proxying POST to {api_url}")
+                print(f"[DEBUG] Request headers:")
+                for header, value in req.header_items():
+                    print(f"    {header}: {value}")
+                print(f"[DEBUG] Request payload: {post_data}")
                 
                 with urllib.request.urlopen(req, context=context) as response:
                     data = response.read()
@@ -397,6 +452,191 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(result).encode())
             
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
+    def handle_create_wtb_endpoint(self, post_data):
+        """Handle creating WTB orders"""
+        try:
+            data = json.loads(post_data.decode('utf-8'))
+            print(f"[DEBUG] Received WTB order data: {data}")
+            item_id = data.get('item_id', '')
+            price = data.get('price', 0)
+            quantity = data.get('quantity', 1)
+            
+            if not item_id or price <= 0:
+                self.send_response(400)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Item ID and valid price are required'})
+                self.wfile.write(error_response.encode())
+                return
+            
+            # Check if user is logged in
+            auth_status = get_auth_status()
+            if not auth_status.get('logged_in'):
+                self.send_response(401)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Must be logged in to create orders'})
+                self.wfile.write(error_response.encode())
+                return
+            
+            # Create WTB order via Warframe Market API
+            order_data = {
+                "item": item_id,  # This should be the item's ObjectId
+                "order_type": "buy",
+                "platinum": price,
+                "quantity": quantity,
+                "visible": True
+            }
+            print(f"[DEBUG] Order payload: {order_data}")
+            
+            # Proxy to Warframe Market API
+            api_url = 'https://api.warframe.market/v1/profile/orders'
+            self.proxy_post_request(api_url, json.dumps(order_data).encode())
+            
+        except json.JSONDecodeError:
+            self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Invalid JSON data'})
+            self.wfile.write(error_response.encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
+    def handle_create_wts_endpoint(self, post_data):
+        """Handle creating WTS orders"""
+        try:
+            data = json.loads(post_data.decode('utf-8'))
+            item_id = data.get('item_id', '')
+            price = data.get('price', 0)
+            quantity = data.get('quantity', 1)
+            
+            if not item_id or price <= 0:
+                self.send_response(400)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Item ID and valid price are required'})
+                self.wfile.write(error_response.encode())
+                return
+            
+            # Check if user is logged in
+            auth_status = get_auth_status()
+            if not auth_status.get('logged_in'):
+                self.send_response(401)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Must be logged in to create orders'})
+                self.wfile.write(error_response.encode())
+                return
+            
+            # Create WTS order via Warframe Market API
+            order_data = {
+                "item": item_id,  # This should be the item's ObjectId
+                "order_type": "sell",
+                "platinum": price,
+                "quantity": quantity,
+                "visible": True
+            }
+            
+            # Proxy to Warframe Market API
+            api_url = 'https://api.warframe.market/v1/profile/orders'
+            self.proxy_post_request(api_url, json.dumps(order_data).encode())
+            
+        except json.JSONDecodeError:
+            self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Invalid JSON data'})
+            self.wfile.write(error_response.encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
+    def handle_delete_order_endpoint(self, post_data):
+        """Handle deleting orders"""
+        try:
+            data = json.loads(post_data.decode('utf-8'))
+            order_id = data.get('order_id', '')
+            
+            if not order_id:
+                self.send_response(400)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Order ID is required'})
+                self.wfile.write(error_response.encode())
+                return
+            
+            # Check if user is logged in
+            auth_status = get_auth_status()
+            if not auth_status.get('logged_in'):
+                self.send_response(401)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Must be logged in to delete orders'})
+                self.wfile.write(error_response.encode())
+                return
+            
+            # Delete order via Warframe Market API
+            api_url = f'https://api.warframe.market/v1/profile/orders/{order_id}'
+            
+            # Use DELETE method
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            
+            req = urllib.request.Request(api_url, method='DELETE')
+            req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+            
+            # Add auth headers
+            auth_headers = get_auth_headers()
+            if auth_headers:
+                for key, value in auth_headers.items():
+                    req.add_header(key, value)
+            
+            with urllib.request.urlopen(req, context=context) as response:
+                data = response.read()
+                content_type = response.headers.get('Content-Type', 'application/json')
+                
+                self.send_response(response.status)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+                self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            
+        except json.JSONDecodeError:
+            self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Invalid JSON data'})
+            self.wfile.write(error_response.encode())
         except Exception as e:
             self.send_response(500)
             self.send_header('Access-Control-Allow-Origin', '*')

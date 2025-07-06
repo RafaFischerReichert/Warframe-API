@@ -1,4 +1,4 @@
-// Warframe Trading Calculator - Prime Sets Analysis
+// Warframe Trading Calculator - Prime Items Analysis with Trading Workflow
 const API_BASE_URL = '/api'; // Use Python proxy server to avoid CORS issues
 
 // ===== CONFIGURATION =====
@@ -27,6 +27,10 @@ const stopAnalysisBtn = document.getElementById('stopAnalysisBtn');
 const maxOrderAgeSlider = document.getElementById('maxOrderAgeSlider');
 const maxOrderAgeValue = document.getElementById('maxOrderAgeValue');
 
+// Trading workflow elements
+const pendingItemsContainer = document.getElementById('pendingItemsContainer');
+const boughtItemsContainer = document.getElementById('boughtItemsContainer');
+
 // Global state
 let allOpportunities = [];
 let primeSetsAnalyzed = 0;
@@ -34,6 +38,16 @@ let isAnalyzing = false;
 let maxOrderAge = parseInt(maxOrderAgeSlider?.value) || 30;
 let rateLimitStatus = { rate_limited: false, elapsed_seconds: 0, estimated_wait: 0 };
 let rateLimitCheckInterval = null;
+
+// Trading workflow state
+let pendingItems = [];
+let boughtItems = [];
+
+// Local storage keys
+const STORAGE_KEYS = {
+    PENDING_ITEMS: 'warframe_trading_pending_items',
+    BOUGHT_ITEMS: 'warframe_trading_bought_items'
+};
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
@@ -58,6 +72,9 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAuthStatus();
     // Start rate limit monitoring
     startRateLimitMonitoring();
+    // Load trading workflow data
+    loadTradingWorkflowData();
+    updateTradingWorkflowUI();
 });
 
 // Authentication status checking
@@ -187,13 +204,36 @@ async function analyzeAllPrimeSets() {
                 try {
                     // Get orders for this Prime item
                     const urlName = primeItem.url_name;
+                    console.log(`[DEBUG] Processing item: ${primeItem.item_name}, _id: ${primeItem._id}, url_name: ${urlName}`);
+                    
+                    // First, get the item details to get the ObjectId
+                    let itemId = primeItem._id;
+                    console.log(`[DEBUG] Initial itemId for ${primeItem.item_name}: ${itemId}`);
+                    if (!itemId) {
+                        try {
+                            const itemDetailsResponse = await fetch(`${API_BASE_URL}/items/${urlName}`);
+                            if (itemDetailsResponse.ok) {
+                                const itemDetails = await itemDetailsResponse.json();
+                                itemId = itemDetails.payload?.item?._id;
+                                console.log(`[DEBUG] Fetched item details for ${primeItem.item_name}, ObjectId: ${itemId}`);
+                            } else {
+                                console.error(`[DEBUG] Failed to fetch item details for ${primeItem.item_name}, status: ${itemDetailsResponse.status}`);
+                            }
+                        } catch (error) {
+                            console.error(`[DEBUG] Failed to fetch item details for ${primeItem.item_name}:`, error);
+                        }
+                    }
+                    console.log(`[DEBUG] Final itemId for ${primeItem.item_name}: ${itemId}`);
+                    
                     const ordersResponse = await fetch(`${API_BASE_URL}/items/${urlName}/orders`);
                     if (ordersResponse.ok) {
                         const ordersData = await ordersResponse.json();
                         const orders = ordersData.payload?.orders || [];
                         if (orders.length > 0) {
-                            const opportunities = analyzePrimeItemOrders(orders, primeItem.item_name, minProfit, maxInvestment);
+                            const opportunities = analyzePrimeItemOrders(orders, primeItem.item_name, itemId, minProfit, maxInvestment);
                             if (opportunities.length > 0) {
+                                console.log(`[DEBUG] Created opportunities for ${primeItem.item_name} with itemId: ${itemId}`);
+                                console.log(`[DEBUG] First opportunity:`, opportunities[0]);
                                 return opportunities;
                             }
                         }
@@ -286,7 +326,7 @@ function analyzePrimeSetOrders(orders, primeSetName, minProfit, maxInvestment) {
     }];
 }
 
-function analyzePrimeItemOrders(orders, itemName, minProfit, maxInvestment) {
+function analyzePrimeItemOrders(orders, itemName, itemId, minProfit, maxInvestment) {
     const now = new Date();
     // Only consider orders from users who are strictly 'ingame'
     const ingameOrders = orders.filter(order => order.user?.status === 'ingame');
@@ -319,6 +359,7 @@ function analyzePrimeItemOrders(orders, itemName, minProfit, maxInvestment) {
     const roi = (profit / buyPrice) * 100;
     return [{
         itemName,
+        itemId,
         buyPrice,
         sellPrice,
         grossProfit: profit,
@@ -343,9 +384,9 @@ function updateTable() {
     if (allOpportunities.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="empty-table">
+                <td colspan="11" class="empty-table">
                     <h3>No Trading Opportunities Yet</h3>
-                    <p>Click "Analyze All Prime Sets" to find profitable trading opportunities.</p>
+                    <p>Click "Analyze All Prime Items" to find profitable trading opportunities.</p>
                 </td>
             </tr>
         `;
@@ -381,6 +422,11 @@ function updateTable() {
             <td class="${roiClass}">${opp.roi.toFixed(1)}%</td>
             <td>${opp.quantity}</td>
             <td>${opp.totalInvestment}</td>
+            <td>
+                <button class="action-btn bought" onclick="createWTBOrder(${JSON.stringify(opp).replace(/"/g, '&quot;')})" style="font-size: 0.8em; padding: 4px 8px;">
+                    Create WTB
+                </button>
+            </td>
         `;
         
         tbody.appendChild(row);
@@ -586,4 +632,313 @@ function updateRateLimitDisplay() {
             analyzePrimeSetsBtn.style.background = '';
         }
     }
+}
+
+// Trading Workflow Functions
+function loadTradingWorkflowData() {
+    try {
+        const pendingData = localStorage.getItem(STORAGE_KEYS.PENDING_ITEMS);
+        const boughtData = localStorage.getItem(STORAGE_KEYS.BOUGHT_ITEMS);
+        
+        pendingItems = pendingData ? JSON.parse(pendingData) : [];
+        boughtItems = boughtData ? JSON.parse(boughtData) : [];
+    } catch (error) {
+        console.error('Error loading trading workflow data:', error);
+        pendingItems = [];
+        boughtItems = [];
+    }
+}
+
+function saveTradingWorkflowData() {
+    try {
+        localStorage.setItem(STORAGE_KEYS.PENDING_ITEMS, JSON.stringify(pendingItems));
+        localStorage.setItem(STORAGE_KEYS.BOUGHT_ITEMS, JSON.stringify(boughtItems));
+    } catch (error) {
+        console.error('Error saving trading workflow data:', error);
+    }
+}
+
+function updateTradingWorkflowUI() {
+    updatePendingItemsUI();
+    updateBoughtItemsUI();
+}
+
+function updatePendingItemsUI() {
+    if (!pendingItemsContainer) return;
+    
+    if (pendingItems.length === 0) {
+        pendingItemsContainer.innerHTML = '<div class="empty-state"><p style="color: #666; text-align: center; font-style: italic;">No pending orders</p></div>';
+        return;
+    }
+    
+    const itemsHTML = pendingItems.map(item => createPendingItemCard(item)).join('');
+    pendingItemsContainer.innerHTML = itemsHTML;
+}
+
+function updateBoughtItemsUI() {
+    if (!boughtItemsContainer) return;
+    
+    if (boughtItems.length === 0) {
+        boughtItemsContainer.innerHTML = '<div class="empty-state"><p style="color: #666; text-align: center; font-style: italic;">No bought items</p></div>';
+        return;
+    }
+    
+    const itemsHTML = boughtItems.map(item => createBoughtItemCard(item)).join('');
+    boughtItemsContainer.innerHTML = itemsHTML;
+}
+
+function createPendingItemCard(item) {
+    return `
+        <div class="trading-item-card pending" data-item-id="${item.id}">
+            <div class="item-card-header">
+                <div class="item-name">${item.itemName}</div>
+                <div class="item-status pending">Pending</div>
+            </div>
+            <div class="item-details">
+                <div class="detail-row">
+                    <span class="detail-label">Buy Price:</span>
+                    <span class="detail-value">${item.buyPrice} plat</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Sell Price:</span>
+                    <span class="detail-value">${item.sellPrice} plat</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Quantity:</span>
+                    <span class="detail-value">${item.quantity}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Expected Profit:</span>
+                    <span class="detail-value">${item.expectedProfit} plat</span>
+                </div>
+            </div>
+            <div class="item-actions">
+                <button class="action-btn bought" onclick="markAsBought('${item.id}')">Bought</button>
+                <button class="action-btn delete" onclick="removePendingItem('${item.id}')">Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+function createBoughtItemCard(item) {
+    return `
+        <div class="trading-item-card bought" data-item-id="${item.id}">
+            <div class="item-card-header">
+                <div class="item-name">${item.itemName}</div>
+                <div class="item-status bought">Bought</div>
+            </div>
+            <div class="item-details">
+                <div class="detail-row">
+                    <span class="detail-label">Buy Price:</span>
+                    <span class="detail-value">${item.buyPrice} plat</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Sell Price:</span>
+                    <span class="detail-value">${item.sellPrice} plat</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Quantity:</span>
+                    <span class="detail-value">${item.quantity}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Expected Profit:</span>
+                    <span class="detail-value">${item.expectedProfit} plat</span>
+                </div>
+            </div>
+            <div class="item-actions">
+                <button class="action-btn sold" onclick="markAsSold('${item.id}')">Sold</button>
+                <button class="action-btn delete" onclick="removeBoughtItem('${item.id}')">Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+async function createWTBOrder(opportunity) {
+    try {
+        console.log(`[DEBUG] Creating WTB order for opportunity:`, opportunity);
+        const requestBody = {
+            item_id: opportunity.itemId || opportunity.itemName, // Use itemId if available, fallback to itemName
+            price: opportunity.buyPrice,
+            quantity: opportunity.quantity
+        };
+        console.log(`[DEBUG] Request body:`, requestBody);
+        
+        const response = await fetch('/trading/create-wtb', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Add to pending items
+            const pendingItem = {
+                id: generateItemId(),
+                itemName: opportunity.itemName,
+                buyPrice: opportunity.buyPrice,
+                sellPrice: opportunity.sellPrice,
+                quantity: opportunity.quantity,
+                expectedProfit: opportunity.netProfit,
+                orderId: result.order_id || null,
+                createdAt: new Date().toISOString()
+            };
+            
+            pendingItems.push(pendingItem);
+            saveTradingWorkflowData();
+            updateTradingWorkflowUI();
+            
+            showMessage(`WTB order created for ${opportunity.itemName} at ${opportunity.buyPrice} plat`, 'success');
+        } else {
+            showMessage(`Failed to create WTB order: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error creating WTB order:', error);
+        showMessage('Error creating WTB order. Please try again.', 'error');
+    }
+}
+
+async function createWTSOrder(item) {
+    try {
+        const response = await fetch('/trading/create-wts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                item_id: item.itemId || item.itemName, // Use itemId if available, fallback to itemName
+                price: item.sellPrice,
+                quantity: item.quantity
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Update item with WTS order ID
+            item.wtsOrderId = result.order_id || null;
+            saveTradingWorkflowData();
+            updateTradingWorkflowUI();
+            
+            showMessage(`WTS order created for ${item.itemName} at ${item.sellPrice} plat`, 'success');
+        } else {
+            showMessage(`Failed to create WTS order: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error creating WTS order:', error);
+        showMessage('Error creating WTS order. Please try again.', 'error');
+    }
+}
+
+async function deleteOrder(orderId) {
+    if (!orderId) return;
+    
+    try {
+        const response = await fetch('/trading/delete-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                order_id: orderId
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('Order deleted successfully', 'success');
+        } else {
+            showMessage(`Failed to delete order: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        showMessage('Error deleting order. Please try again.', 'error');
+    }
+}
+
+async function markAsBought(itemId) {
+    const itemIndex = pendingItems.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return;
+    
+    const item = pendingItems[itemIndex];
+    
+    // Delete WTB order if it exists
+    if (item.orderId) {
+        await deleteOrder(item.orderId);
+    }
+    
+    // Move to bought items
+    pendingItems.splice(itemIndex, 1);
+    boughtItems.push(item);
+    
+    saveTradingWorkflowData();
+    updateTradingWorkflowUI();
+    
+    // Automatically create WTS order
+    await createWTSOrder(item);
+    
+    showMessage(`${item.itemName} marked as bought and WTS order created`, 'success');
+}
+
+function markAsSold(itemId) {
+    const itemIndex = boughtItems.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return;
+    
+    const item = boughtItems[itemIndex];
+    
+    // Delete WTS order if it exists
+    if (item.wtsOrderId) {
+        deleteOrder(item.wtsOrderId);
+    }
+    
+    // Remove from bought items
+    boughtItems.splice(itemIndex, 1);
+    
+    saveTradingWorkflowData();
+    updateTradingWorkflowUI();
+    
+    showMessage(`${item.itemName} marked as sold`, 'success');
+}
+
+function removePendingItem(itemId) {
+    const itemIndex = pendingItems.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return;
+    
+    const item = pendingItems[itemIndex];
+    
+    // Delete WTB order if it exists
+    if (item.orderId) {
+        deleteOrder(item.orderId);
+    }
+    
+    pendingItems.splice(itemIndex, 1);
+    saveTradingWorkflowData();
+    updateTradingWorkflowUI();
+    
+    showMessage(`${item.itemName} removed from pending items`, 'success');
+}
+
+function removeBoughtItem(itemId) {
+    const itemIndex = boughtItems.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return;
+    
+    const item = boughtItems[itemIndex];
+    
+    // Delete WTS order if it exists
+    if (item.wtsOrderId) {
+        deleteOrder(item.wtsOrderId);
+    }
+    
+    boughtItems.splice(itemIndex, 1);
+    saveTradingWorkflowData();
+    updateTradingWorkflowUI();
+    
+    showMessage(`${item.itemName} removed from bought items`, 'success');
+}
+
+function generateItemId() {
+    return 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 } 
