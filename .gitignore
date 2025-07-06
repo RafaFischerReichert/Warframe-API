@@ -21,3 +21,15 @@ Desktop.ini
 
 # Logs
 *.log
+
+# Authentication and session files
+*.session
+auth_tokens.json
+csrf_tokens.json
+
+# Test files
+test_auth.py
+
+# Temporary files
+*.tmp
+*.temp
