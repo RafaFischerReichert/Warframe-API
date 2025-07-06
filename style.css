@@ -652,4 +652,106 @@ header p {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #0099cc;
+}
+
+/* Order Mode Selection Section */
+.order-mode-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: rgba(0, 212, 255, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.order-mode-switch-container {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.order-mode-switch {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+.order-mode-switch-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.order-mode-switch-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 200px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0 10px;
+}
+
+.order-mode-switch-label:hover {
+    border-color: #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+}
+
+.order-mode-switch-slider {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(45deg, #00d4ff, #ff6b6b);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
+}
+
+.order-mode-switch-input:checked + .order-mode-switch-label .order-mode-switch-slider {
+    transform: translateX(150px);
+    background: linear-gradient(45deg, #ff6b6b, #00d4ff);
+}
+
+.order-mode-switch-text {
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+.online-text {
+    color: #00d4ff;
+}
+
+.all-text {
+    color: #ff6b6b;
+}
+
+.order-mode-switch-input:checked + .order-mode-switch-label .online-text {
+    color: #b0b0b0;
+}
+
+.order-mode-switch-input:checked + .order-mode-switch-label .all-text {
+    color: #ff6b6b;
+}
+
+.order-mode-switch-input:not(:checked) + .order-mode-switch-label .online-text {
+    color: #00d4ff;
+}
+
+.order-mode-switch-input:not(:checked) + .order-mode-switch-label .all-text {
+    color: #b0b0b0;
+}
+
+.order-mode-description {
+    color: #b0b0b0;
+    font-size: 0.9rem;
+    margin: 0;
+    transition: color 0.3s ease;
 } 
