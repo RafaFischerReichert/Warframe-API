@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warframe Trading Calculator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Warframe Trading Calculator</h1>
+        <p style="text-align: center; color: #b0b0b0; margin-bottom: 20px;">
+            Find profitable trading opportunities by analyzing WTB and WTS orders
+        </p>
+        
+        <!-- Navigation -->
+        <div class="nav-links" style="text-align: center; margin-bottom: 20px;">
+            <a href="index.html" class="nav-link">Syndicate Search</a>
+            <a href="trading-calculator.html" class="nav-link active">Trading Calculator</a>
+            <a href="login.html" class="nav-link">Login</a>
+        </div>
+
+        <!-- Trading Calculator Interface -->
+        <div class="trading-calculator-container">
+            <div class="trading-inputs">
+                <div class="input-group">
+                    <label for="minProfitInput">Minimum Profit (platinum):</label>
+                    <input type="number" id="minProfitInput" placeholder="10" value="10" min="1">
+                </div>
+                <div class="input-group">
+                    <label for="maxInvestmentInput">Maximum Investment (platinum):</label>
+                    <input type="number" id="maxInvestmentInput" placeholder="1000" value="1000" min="0">
+                </div>
+                <button id="analyzePrimeSetsBtn" class="analyze-btn">Analyze All Prime Sets</button>
+                <button id="clearTableBtn" class="clear-table-btn">Clear Table</button>
+            </div>
+            <div class="trading-info">
+                <p><strong>How it works:</strong> This tool automatically fetches all Warframe Prime sets from the market and analyzes their trading opportunities. It finds the gap between WTB and WTS orders for each Prime set and shows the top 20 most profitable opportunities.</p>
+            </div>
+        </div>
+
+        <!-- Analysis Progress -->
+        <div id="analysis-progress" class="analysis-progress" style="display: none;">
+            <h3 style="color: #00d4ff; text-align: center; margin-bottom: 15px;">Analyzing Prime Sets</h3>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+            </div>
+            <p id="progressText" style="text-align: center; color: #b0b0b0; margin-top: 10px;">Initializing...</p>
+            <p id="currentItem" style="text-align: center; color: #00d4ff; font-size: 0.9rem; margin-top: 5px;"></p>
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="stopAnalysisBtn" class="stop-btn">Stop Analysis</button>
+            </div>
+        </div>
+
+        <!-- Trading Opportunities Table -->
+        <div class="trading-table-container">
+            <h3 style="color: #00d4ff; text-align: center; margin-bottom: 20px;">Top Trading Opportunities</h3>
+            <div class="table-controls">
+                <span id="primeSetsAnalyzed" class="mods-counter">Prime sets analyzed: 0</span>
+                <span id="totalOpportunities" class="opportunities-counter">Total opportunities: 0</span>
+            </div>
+            <div class="trading-table-wrapper">
+                <table id="tradingTable" class="trading-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Prime Set</th>
+                            <th>Buy Price</th>
+                            <th>Sell Price</th>
+                            <th>Order Age (days)</th>
+                            <th>Tax</th>
+                            <th>Net Profit</th>
+                            <th>ROI %</th>
+                            <th>Quantity</th>
+                            <th>Total Investment</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradingTableBody">
+                        <!-- Table rows will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Max Order Age Slider -->
+        <div class="order-age-slider-section" style="margin: 30px 0 10px 0; text-align: center;">
+            <label for="maxOrderAgeSlider" style="color: #00d4ff; font-weight: bold; margin-right: 10px;">Max Order Age (days):</label>
+            <input type="range" id="maxOrderAgeSlider" min="1" max="30" value="30" style="vertical-align: middle;">
+            <span id="maxOrderAgeValue" style="color: #ffd700; font-weight: bold; margin-left: 10px;">30</span>
+        </div>
+
+        <div id="trading-results">
+            <div style="text-align: center; color: #888; padding: 40px;">
+                <h3 style="color: #00d4ff;">Welcome to Trading Calculator</h3>
+                <p>Enter an item name above to analyze trading opportunities.</p>
+                <div style="margin-top: 20px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <h4 style="color: #00d4ff; margin-bottom: 10px;">How to use:</h4>
+                    <ul style="color: #b0b0b0; line-height: 1.6;">
+                        <li><strong>Item Name:</strong> Enter the exact name of the item you want to analyze</li>
+                        <li><strong>Minimum Profit:</strong> Set the minimum profit you want to see (in platinum)</li>
+                        <li><strong>Maximum Investment:</strong> Set your maximum budget for buying items</li>
+                        <li><strong>Trading Tax:</strong> Include the 5% trading tax in calculations</li>
+                    </ul>
+                </div>
+                <p style="font-size: 0.9em; margin-top: 20px;">
+                    <strong>Tip:</strong> The calculator will show you the best buy and sell prices, profit margins, and ROI percentages.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="trading-calculator.js"></script>
+</body>
+</html> 
