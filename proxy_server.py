@@ -9,6 +9,10 @@ import json
 import ssl
 import threading
 import time
+import os
+import base64
+import urllib.error
+import http.cookiejar
 
 # Semaphore for concurrent requests (max 3)
 concurrent_semaphore = threading.Semaphore(3)
@@ -20,7 +24,7 @@ RATE_PERIOD = 1.0  # per second
 
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        print(f"Received request for path: {self.path}")
+        print(f"Received GET request for path: {self.path}")
         
         if self.path.startswith('/api/'):
             # Proxy the request to Warframe Market API
@@ -29,7 +33,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 api_path = '/' + api_path
             api_url = f'https://api.warframe.market/v1{api_path}'
             
-            print(f"Proxying request: {self.path} -> {api_url}")
+            print(f"Proxying GET request: {self.path} -> {api_url}")
             
             try:
                 # Acquire concurrency semaphore
@@ -45,6 +49,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                                 request_timestamps.append(now)
                                 break
                         time.sleep(0.05)  # Wait a bit before retrying
+                    
                     # Create context to ignore SSL certificate verification
                     context = ssl.create_default_context()
                     context.check_hostname = False
@@ -53,6 +58,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     # Make request to Warframe Market API
                     req = urllib.request.Request(api_url)
                     req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+                    
+                    # Add Authorization header if present
+                    auth_header = self.headers.get('Authorization')
+                    if auth_header:
+                        req.add_header('Authorization', auth_header)
                     
                     with urllib.request.urlopen(req, context=context) as response:
                         data = response.read()
@@ -84,7 +94,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             # Serve static files
             try:
                 if self.path == '/':
-                    self.path = '/index.html'
+                    self.path = '/trading-calculator.html'
                 
                 with open('.' + self.path, 'rb') as f:
                     content = f.read()
@@ -118,6 +128,82 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-Type', 'text/plain')
                 self.end_headers()
                 self.wfile.write(f'Server error: {str(e)}'.encode())
+
+    def do_POST(self):
+        print(f"Received POST request for path: {self.path}")
+        
+        # Get request body
+        content_length = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_length)
+        
+        if self.path.startswith('/api/'):
+            # Proxy POST requests to Warframe Market API
+            api_path = self.path[5:]  # Remove '/api/' prefix
+            if not api_path.startswith('/'):
+                api_path = '/' + api_path
+            api_url = f'https://api.warframe.market/v1{api_path}'
+            
+            print(f"Proxying POST request: {self.path} -> {api_url}")
+            self.proxy_post_request(api_url, post_data)
+        else:
+            self.send_response(404)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'error': 'Endpoint not found'})
+            self.wfile.write(error_response.encode())
+
+    def proxy_post_request(self, api_url, post_data):
+        """Proxy POST requests to Warframe Market API"""
+        try:
+            # Acquire concurrency semaphore
+            with concurrent_semaphore:
+                # Rate limiting
+                while True:
+                    with rate_limit_lock:
+                        now = time.time()
+                        while request_timestamps and now - request_timestamps[0] > RATE_PERIOD:
+                            request_timestamps.pop(0)
+                        if len(request_timestamps) < RATE_LIMIT:
+                            request_timestamps.append(now)
+                            break
+                    time.sleep(0.05)
+                
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                
+                req = urllib.request.Request(api_url, data=post_data)
+                req.add_header('Content-Type', 'application/json')
+                req.add_header('Accept', 'application/json')
+                req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+                
+                # Add Authorization header if present
+                auth_header = self.headers.get('Authorization')
+                if auth_header:
+                    req.add_header('Authorization', auth_header)
+                
+                with urllib.request.urlopen(req, context=context) as response:
+                    data = response.read()
+                    content_type = response.headers.get('Content-Type', 'application/json')
+                    
+                    self.send_response(response.status)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                    self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+                    self.send_header('Content-Type', content_type)
+                    self.send_header('Content-Length', str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    
+        except Exception as e:
+            print(f"Error proxying POST request: {e}")
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'error': f'Proxy error: {str(e)}'})
+            self.wfile.write(error_response.encode())
     
     def do_OPTIONS(self):
         # Handle CORS preflight requests

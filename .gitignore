@@ -1,10 +1,23 @@
+# Environment variables and credentials
+.env
+*.env
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
 .DS_Store
-applet
-application.linux-arm64
-application.linux-armv6hf
-application.linux32
-application.linux64
-application.windows32
-application.windows64
-application.macosx
-out
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log

@@ -1,92 +1,107 @@
-# Warframe Syndicate Mod Market
+# Warframe Prime Set Trading Analyzer
 
-A web application to search for Warframe syndicate mods and check their current market prices using the Warframe Market API.
+A powerful, privacy-friendly tool for analyzing arbitrage and trading opportunities for Warframe Prime Sets using public Warframe.market data. No login, no account, no order creation—just pure market intelligence.
+
+---
 
 ## Features
 
-- **Syndicate Mod Search**: Search for mods from any of the 6 major syndicates
-- **Real-time Pricing**: Get current lowest prices from the Warframe Market
-- **Price Sorting**: Results automatically sorted by lowest price
-- **Order Count**: See how many active orders are available for each mod
-- **Dark Theme**: Modern dark mode interface
-- **Responsive Design**: Works on desktop and mobile devices
-- **CORS Proxy**: Built-in proxy server to handle API requests
+- **Prime Set Analysis:** Scans all Warframe Prime sets for the best buy/sell gaps.
+- **Live Market Data:** Fetches real-time public orders from Warframe.market.
+- **Smart Filtering:**
+  - Only considers "ingame" (active) orders.
+  - Adjustable max order age (slider, in days).
+  - Minimum profit and max investment filters.
+- **Realistic Trading Logic:**
+  - Buy at (highest WTB + 1), sell at (lowest WTS - 1).
+  - Shows only actionable, realistic opportunities.
+- **Order Age Visualization:**
+  - Buy price cell is color-coded by order age (green = fresh, red = stale).
+  - Table shows the age (in days) of the best WTB order.
+- **Top Opportunities Table:**
+  - Ranks and displays the top 20 arbitrage opportunities.
+  - Includes ROI, net profit, quantity, and total investment.
+- **No Login Required:**
+  - No account, no cookies, no tracking, no order creation.
+- **One-Click Analysis:**
+  - Simple UI: set your filters, click "Analyze All Prime Sets," and see results.
+- **Stop Analysis:**
+  - Cancel a long scan at any time with the "Stop Analysis" button.
 
-## Supported Syndicates
+---
 
-- **Steel Meridian** - Red-themed syndicate
-- **Arbiters of Hexis** - Blue-themed syndicate  
-- **Cephalon Suda** - Cyan-themed syndicate
-- **Perrin Sequence** - Green-themed syndicate
-- **Red Veil** - Dark red syndicate
-- **New Loka** - Light green syndicate
-
-## Setup
+## Setup Instructions
 
 ### Prerequisites
-
 - Python 3.x
-- A modern web browser
+- Modern web browser
 
-### Running the Application
-
-1. **Clone or download this repository**
-
-2. **Start the proxy server:**
+### Installation & Running
+1. **Clone or download this repository.**
+2. **Start the Python proxy server:**
    ```bash
    python proxy_server.py
    ```
-
-3. **Open your browser and navigate to:**
+3. **Open your browser** and go to:
    ```
    http://localhost:8000
    ```
 
-## Usage
+---
 
-1. Enter a syndicate name in the search box (e.g., "Steel Meridian", "Red Veil", "Suda")
-2. Click "Search Mods" or press Enter
-3. View the results showing:
-   - Mod names and categories
-   - Current lowest prices
-   - Number of active orders
-   - Results sorted by price (lowest first)
+## How to Use
 
-## How It Works
+1. **Set your filters:**
+   - Minimum profit (platinum)
+   - Maximum investment (platinum)
+   - Max order age (slider)
+2. **Click "Analyze All Prime Sets"**
+3. **Watch the progress bar** and see the top opportunities populate the table.
+4. **Review results:**
+   - Buy/Sell prices, order age, ROI, net profit, and more.
+5. **Stop analysis** at any time with the "Stop Analysis" button.
+6. **Clear the table** with the "Clear Table" button.
 
-The application uses a **proxy server** (`proxy_server.py`) that:
-- Serves the web application files
-- Handles CORS (Cross-Origin Resource Sharing) headers
-- Proxies API requests to the Warframe Market API
-- Prevents network errors that occur when calling the API directly from browsers
+---
 
-## Troubleshooting
+## Limitations & Known Issues
 
-### Network Error Issues
-- **Make sure you're using the proxy server**: Run `python proxy_server.py` and access via `http://localhost:8000`
-- **Don't open the HTML file directly**: This will cause CORS errors
-- **Check if the server is running**: The terminal should show "Proxy server running on http://localhost:8000"
+- **No Order Creation:** This tool does not create or manage orders on Warframe.market.
+- **No Login/Account:** You cannot log in or see your own orders.
+- **Some Orders Missing:** Some orders visible on the Warframe.market website (notably those with a special icon next to the profile picture) may not appear in this app. These orders are not present in the public API and cannot be fetched programmatically.
+- **API Rate Limits:** The tool is rate-limited to avoid being blocked by Warframe.market. Large scans may take a minute or two.
+- **Data Freshness:** Results are only as fresh as the public API allows. Some stale orders may appear if not yet purged from the API.
 
-### Common Issues
-- **"NetworkError when attempting to fetch resource"**: Use the proxy server instead of opening the file directly
-- **No results found**: Try different syndicate names or check your internet connection
-- **Server won't start**: Make sure port 8000 is not in use by another application
+---
 
-## API Information
+## Project Structure
 
-This application uses the **Warframe Market API**:
-- **Base URL**: `https://api.warframe.market/v1`
-- **Authentication**: Not required for public endpoints
-- **Rate Limits**: Please be respectful of the API's rate limits
+```
+warframe-prime-trading/
+├── trading-calculator.html    # Main UI
+├── trading-calculator.js      # Frontend logic
+├── style.css                 # App styling
+├── proxy_server.py           # Python proxy server (CORS + API proxy)
+├── README.md                 # This file
+├── LICENSE                   # License info
+```
 
-## Files
+---
 
-- `index.html` - Main web page
-- `style.css` - Dark theme styling
-- `script.js` - Application logic and API integration
-- `proxy_server.py` - CORS proxy server
-- `README.md` - This documentation
+## Credits & Acknowledgments
+
+- **Warframe.market** for their public API and market data.
+- **Digital Extremes** for Warframe and the Warframe API.
+- **You!** For using, testing, and improving this tool.
+
+---
 
 ## License
 
-This project is open source and available under the MIT License. 
+MIT License — see LICENSE for details.
+
+---
+
+## Disclaimer
+
+This tool is for educational and personal use only. Use at your own risk. The developers are not responsible for any trading losses, account issues, or market changes. Not affiliated with Digital Extremes or Warframe.market. 
