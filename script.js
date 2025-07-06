@@ -114,33 +114,24 @@ function updatePresetButtons() {
     });
 }
 
-function getCutoffDate() {
-    const days = parseInt(timeRangeSlider.value);
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-    return cutoffDate;
-}
-
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     searchBtn.addEventListener('click', searchSyndicateMods);
-});
-
-// Add Enter key support for search input
-searchInput.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        searchSyndicateMods();
-    }
-});
-
-// Rank switch event listener
-rankSwitch.addEventListener('change', updateRankDescription);
-
-// Order type switch event listener
-orderTypeSwitch.addEventListener('change', updateOrderTypeDescription);
-
-// Time range preset buttons event listeners
-document.addEventListener('DOMContentLoaded', function() {
+    
+    // Add Enter key support for search input
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchSyndicateMods();
+        }
+    });
+    
+    // Rank switch event listener
+    rankSwitch.addEventListener('change', updateRankDescription);
+    
+    // Order mode switch event listener
+    orderModeSwitch.addEventListener('change', updateOrderModeDescription);
+    
+    // Time range preset buttons event listeners
     const presetButtons = document.querySelectorAll('.time-preset-btn');
     presetButtons.forEach(button => {
         button.addEventListener('click', function() {
@@ -150,6 +141,11 @@ document.addEventListener('DOMContentLoaded', function() {
             updatePresetButtons();
         });
     });
+    
+    // Apply Filter button event listener
+    if (applyFilterBtn) {
+        applyFilterBtn.addEventListener('click', applyFilter);
+    }
 });
 
 // Update rank description
@@ -161,18 +157,6 @@ function updateRankDescription() {
     } else {
         rankDescription.textContent = 'Searching for Rank 0 mods (unranked)';
         rankDescription.style.color = '#00d4ff';
-    }
-}
-
-// Update order type description
-function updateOrderTypeDescription() {
-    const isIngameOnly = orderTypeSwitch.checked;
-    if (isIngameOnly) {
-        orderTypeDescription.textContent = 'Showing only in-game orders (online players)';
-        orderTypeDescription.style.color = '#4ecdc4';
-    } else {
-        orderTypeDescription.textContent = 'Showing all orders (including offline)';
-        orderTypeDescription.style.color = '#ff6b6b';
     }
 }
 
@@ -196,11 +180,6 @@ function updateOrderModeDescription() {
 function getSelectedOrderMode() {
     // Checkbox unchecked = online only, checked = all orders
     return orderModeSwitch && orderModeSwitch.checked ? 'all' : 'online';
-}
-
-if (orderModeSwitch) {
-    orderModeSwitch.addEventListener('change', updateOrderModeDescription);
-    document.addEventListener('DOMContentLoaded', updateOrderModeDescription);
 }
 
 // Initialize the application by loading syndicate data
@@ -316,7 +295,7 @@ async function searchSyndicateMods() {
             <h3 style="color: ${syndicateColors[0]};">${fullHeading}</h3>
             <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">Time range: ${timeRangeDisplay.textContent}</p>
             <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
-            <p style="color: ${getSelectedOrderType() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderType() === 'all' ? 'All Orders' : 'In-Game Only'}</p>
+            <p style="color: ${getSelectedOrderMode() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderMode() === 'all' ? 'All Orders' : 'Online Only'}</p>
             <div class="progress-bar-container">
                 <div id="progressBar" class="progress-bar" style="width: 0%; background: linear-gradient(90deg, ${syndicateColors[0]}, #00d4ff);"></div>
             </div>
@@ -336,8 +315,6 @@ async function searchSyndicateMods() {
             };
         }
     }, 0);
-    // Get the cutoff date based on selected time range
-    const cutoffDate = getCutoffDate();
     // Get price data for each item
     const itemsWithPrices = [];
     let completedItems = 0;
@@ -366,9 +343,6 @@ async function searchSyndicateMods() {
             let price = null;
             let efficiency = null;
             let orderCount = 0;
-            let minPrice = null;
-            let maxPrice = null;
-            let avgPrice = null;
             let recentOrders = [];
             try {
                 const response = await fetch(apiUrl);
@@ -379,31 +353,29 @@ async function searchSyndicateMods() {
                     const now = new Date();
                     const orderMode = getSelectedOrderMode();
                     recentOrders = orders.filter(order => {
+                        // Filter by rank
                         if (order.mod_rank !== undefined && ((selectedRank === 'rank0' && order.mod_rank !== 0) || (selectedRank === 'rank3' && order.mod_rank !== 3))) {
                             return false;
                         }
+                        
+                        // Filter by time range
+                        const lastSeen = new Date(order.last_update || order.last_seen || 0);
+                        const isWithinTimeRange = (now - lastSeen) / (1000 * 60 * 60 * 24) <= parseInt(timeRangeSlider.value);
+                        if (!isWithinTimeRange) {
+                            return false;
+                        }
+                        
+                        // Filter by online status if "online only" is selected
                         if (orderMode === 'online' && order.user && order.user.status !== 'ingame' && order.user.status !== 'online') {
                             return false;
                         }
-                        const lastSeen = new Date(order.last_update || order.last_seen || 0);
-                        const isWithinTimeRange = (now - lastSeen) / (1000 * 60 * 60 * 24) <= parseInt(timeRangeSlider.value);
                         
-                        // Filter by order type if "in-game only" is selected
-                        const selectedOrderType = getSelectedOrderType();
-                        if (selectedOrderType === 'ingame') {
-                            // Only include orders where user is online (status === 'online' or 'ingame')
-                            return isWithinTimeRange && (order.user.status === 'online' || order.user.status === 'ingame');
-                        }
-                        
-                        return isWithinTimeRange;
+                        return true;
                     });
                     orderCount = recentOrders.length;
                     if (orderCount > 0) {
                         const prices = recentOrders.map(order => order.platinum);
-                        minPrice = Math.min(...prices);
-                        maxPrice = Math.max(...prices);
-                        avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
-                        price = minPrice;
+                        price = Math.min(...prices);
                         efficiency = Math.round((item.standing_cost / price) * 10) / 10;
                     }
                 }
@@ -414,11 +386,7 @@ async function searchSyndicateMods() {
                 ...item,
                 price,
                 efficiency,
-                orderCount,
-                minPrice,
-                maxPrice,
-                avgPrice,
-                recentOrders
+                orderCount
             });
         } catch (err) {
             // Handle errors for individual items
@@ -453,7 +421,7 @@ function renderFilteredItems() {
             <h3 style="color: ${lastColor};">${lastHeading}</h3>
             <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">Time range: ${timeRangeDisplay.textContent}</p>
             <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
-            <p style="color: ${getSelectedOrderType() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderType() === 'all' ? 'All Orders' : 'In-Game Only'}</p>
+            <p style="color: ${getSelectedOrderMode() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderMode() === 'all' ? 'All Orders' : 'Online Only'}</p>
         </div>
         <div class="items-grid">
             ${sortedItems.map(item => `
@@ -476,15 +444,7 @@ function renderFilteredItems() {
     `;
 }
 
-// Add event listener for Apply Filter button
-if (applyFilterBtn) {
-    applyFilterBtn.addEventListener('click', applyFilter);
-} else {
-    document.addEventListener('DOMContentLoaded', function() {
-        const btn = document.getElementById('applyFilterBtn');
-        if (btn) btn.addEventListener('click', applyFilter);
-    });
-}
+
 
 // Update the applyFilter function to use keyword mapping
 function applyFilter() {
