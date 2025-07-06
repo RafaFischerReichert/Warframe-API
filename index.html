@@ -19,7 +19,8 @@
         </div>
 
         <div class="filter-section" style="text-align:center; margin-bottom:20px;">
-            <input type="text" id="itemFilterInput" placeholder="Filter items by name, type, or syndicate..." style="padding:8px; width:300px; border-radius:4px; border:1px solid #333; background:#222; color:#fff;">
+            <input type="text" id="itemFilterInput" placeholder="Filter items by type..." style="padding:8px; width:250px; border-radius:4px; border:1px solid #333; background:#222; color:#fff; margin-right:10px;">
+            <button id="applyFilterBtn" style="padding:8px 16px; background:linear-gradient(45deg, #00d4ff, #ff6b6b); border:none; border-radius:4px; color:#fff; cursor:pointer; font-weight:bold;">Apply Filter</button>
         </div>
 
         <div class="time-range-section">
@@ -60,19 +61,18 @@
                 <p class="rank-description" id="rankDescription">Searching for Rank 0 mods (unranked)</p>
             </div>
         </div>
-
-        <div class="order-type-section">
-            <h3 style="color: #00d4ff; margin-bottom: 15px; text-align: center;">Order Type Filter</h3>
-            <div class="order-type-switch-container">
-                <div class="order-type-switch">
-                    <input type="checkbox" id="orderTypeSwitch" class="order-type-switch-input">
-                    <label for="orderTypeSwitch" class="order-type-switch-label">
-                        <span class="order-type-switch-slider"></span>
-                        <span class="order-type-switch-text all-orders-text">All Orders</span>
-                        <span class="order-type-switch-text ingame-orders-text">In-Game Only</span>
+        <div class="order-mode-section">
+            <h3 style="color: #00d4ff; margin-bottom: 15px; text-align: center;">Order Display Mode</h3>
+            <div class="order-mode-switch-container">
+                <div class="order-mode-switch">
+                    <input type="checkbox" id="orderModeSwitch" class="order-mode-switch-input">
+                    <label for="orderModeSwitch" class="order-mode-switch-label">
+                        <span class="order-mode-switch-slider"></span>
+                        <span class="order-mode-switch-text online-text">Online Only</span>
+                        <span class="order-mode-switch-text all-text">All Orders</span>
                     </label>
                 </div>
-                <p class="order-type-description" id="orderTypeDescription">Showing all orders (including offline)</p>
+                <p class="order-mode-description" id="orderModeDescription">Showing only online player orders</p>
             </div>
         </div>
 

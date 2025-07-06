@@ -9,11 +9,51 @@ const timeRangeDisplay = document.getElementById('timeRangeDisplay');
 const rankSwitch = document.getElementById('rankSwitch');
 const rankDescription = document.getElementById('rankDescription');
 const searchInput = document.getElementById('searchInput');
-const orderTypeSwitch = document.getElementById('orderTypeSwitch');
-const orderTypeDescription = document.getElementById('orderTypeDescription');
+const orderModeSwitch = document.getElementById('orderModeSwitch');
+const orderModeDescription = document.getElementById('orderModeDescription');
+const applyFilterBtn = document.getElementById('applyFilterBtn');
 
 // Global variable to store syndicate data
 let SYNDICATES = {};
+
+// Add global filter variable
+let currentTypeFilter = '';
+
+// Add filter keywords mapping
+const FILTER_KEYWORDS = {
+    'mod': ['mod', 'mods', 'modification', 'modifications', 'augment', 'augments', 'augmentation', 'augmentations'],
+    'weapon': ['weapon', 'weapons', 'weap', 'weaps', 'gun', 'guns', 'wep', 'weps', 'wepon', 'wepons'],
+    'cosmetic': ['cosmetic', 'cosmetics', 'cosm', 'skin', 'skins', 'appearance', 'skinset', 'skinsets', 'drifter', 'drifters'],
+    'archwing': ['archwing', 'arch', 'wing', 'wings', 'archwings', 'archgun', 'archguns'],
+    'blueprint': ['blueprint', 'blueprints', 'bp', 'bps', 'recipe', 'recipes'],
+    'emote': ['emote', 'emotes', 'animation', 'animations', 'anim', 'anims'],
+    'armor': ['armor', 'armors', 'armour', 'armours'],
+    'syandana': ['syandana', 'syandanas', 'cape', 'capes', 'scarf', 'scarves'],
+    'sigil': ['sigil', 'sigils', 'emblem', 'emblems'],
+    'glyph': ['glyph', 'glyphs', 'profile', 'profiles'],
+    'key': ['key', 'keys', 'mission', 'missions'],
+    'consumable': ['consumable', 'consumables', 'consum', 'boost', 'boosts'],
+    'other': ['other', 'others', 'misc', 'miscellaneous']
+};
+
+// Helper function to get item type from filter input
+function getItemTypeFromFilter(filterValue) {
+    const lowerFilter = filterValue.toLowerCase();
+    
+    // Check if the filter matches any keywords
+    for (const [itemType, keywords] of Object.entries(FILTER_KEYWORDS)) {
+        if (keywords.some(keyword => 
+            lowerFilter === keyword || 
+            keyword.includes(lowerFilter) || 
+            lowerFilter.includes(keyword)
+        )) {
+            return itemType;
+        }
+    }
+    
+    // If no keyword match, return the original filter value
+    return lowerFilter;
+}
 
 // Load syndicate data from JSON file
 async function loadSyndicateData() {
@@ -141,9 +181,26 @@ function getSelectedRank() {
     return rankSwitch.checked ? 'rank3' : 'rank0';
 }
 
-// Get selected order type filter
-function getSelectedOrderType() {
-    return orderTypeSwitch.checked ? 'ingame' : 'all';
+// Update order mode description
+function updateOrderModeDescription() {
+    const isOnline = !orderModeSwitch.checked;
+    if (isOnline) {
+        orderModeDescription.textContent = 'Showing only online player orders';
+        orderModeDescription.style.color = '#b0b0b0';
+    } else {
+        orderModeDescription.textContent = 'Showing all player orders';
+        orderModeDescription.style.color = '#ff6b6b';
+    }
+}
+
+function getSelectedOrderMode() {
+    // Checkbox unchecked = online only, checked = all orders
+    return orderModeSwitch && orderModeSwitch.checked ? 'all' : 'online';
+}
+
+if (orderModeSwitch) {
+    orderModeSwitch.addEventListener('change', updateOrderModeDescription);
+    document.addEventListener('DOMContentLoaded', updateOrderModeDescription);
 }
 
 // Initialize the application by loading syndicate data
@@ -152,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     updateTimeRangeDisplay(); // Initialize the display
     updatePresetButtons(); // Initialize preset button states
     updateRankDescription(); // Initialize rank description
-    updateOrderTypeDescription(); // Initialize order type description
+    updateOrderModeDescription(); // Initialize order mode description
 });
 
 let lastDisplayedItems = [];
@@ -185,10 +242,22 @@ async function searchSyndicateMods() {
     const searchTerms = searchTerm.split(',').map(s => s.trim()).filter(Boolean);
     // Find all matching syndicates (unique)
     const matchedKeys = new Set();
-    for (const term of searchTerms) {
+    
+    // Check if "all" is in the search terms
+    const isAllSyndicates = searchTerms.some(term => term.toLowerCase() === 'all');
+    
+    if (isAllSyndicates) {
+        // Include all syndicates
         for (const [key, data] of Object.entries(SYNDICATES)) {
-            if (data.keywords.some(keyword => term === keyword || keyword.includes(term) || term.includes(keyword))) {
-                matchedKeys.add(key);
+            matchedKeys.add(key);
+        }
+    } else {
+        // Normal syndicate matching
+        for (const term of searchTerms) {
+            for (const [key, data] of Object.entries(SYNDICATES)) {
+                if (data.keywords.some(keyword => term === keyword || keyword.includes(term) || term.includes(keyword))) {
+                    matchedKeys.add(key);
+                }
             }
         }
     }
@@ -211,7 +280,14 @@ async function searchSyndicateMods() {
     let syndicateNames = [];
     let syndicateColors = [];
     for (const [syndicateKey, syndicateData] of matchedSyndicates) {
-        combinedItems = combinedItems.concat(syndicateData.items.map(item => ({...item, syndicate: syndicateData.name, color: syndicateData.color})));
+        // Apply type filter at the search level
+        let itemsToAdd = syndicateData.items;
+        if (currentTypeFilter) {
+            itemsToAdd = syndicateData.items.filter(item => 
+                item.type && item.type.toLowerCase().includes(currentTypeFilter)
+            );
+        }
+        combinedItems = combinedItems.concat(itemsToAdd.map(item => ({...item, syndicate: syndicateData.name, color: syndicateData.color})));
         syndicateNames.push(syndicateData.name);
         syndicateColors.push(syndicateData.color);
     }
@@ -229,10 +305,15 @@ async function searchSyndicateMods() {
     const heading = syndicateNames.length === 1 ?
         `${syndicateNames[0]} Items` :
         `${syndicateNames.slice(0, -1).join(', ')} and ${syndicateNames[syndicateNames.length - 1]} Items`;
+    
+    // Add filter info to heading if filter is active
+    const filterInfo = currentTypeFilter ? ` (${currentTypeFilter} only)` : '';
+    const fullHeading = heading + filterInfo;
+    
     // Show progress bar loading state with cancel button
     resultsDiv.innerHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
-            <h3 style="color: ${syndicateColors[0]};">${heading}</h3>
+            <h3 style="color: ${syndicateColors[0]};">${fullHeading}</h3>
             <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">Time range: ${timeRangeDisplay.textContent}</p>
             <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
             <p style="color: ${getSelectedOrderType() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderType() === 'all' ? 'All Orders' : 'In-Game Only'}</p>
@@ -293,11 +374,15 @@ async function searchSyndicateMods() {
                 const response = await fetch(apiUrl);
                 if (response.ok) {
                     const data = await response.json();
-                    // Filter orders by rank and recency
+                    // Filter orders by rank, recency, and online status if needed
                     const orders = (data.payload && data.payload.orders) ? data.payload.orders : [];
                     const now = new Date();
+                    const orderMode = getSelectedOrderMode();
                     recentOrders = orders.filter(order => {
                         if (order.mod_rank !== undefined && ((selectedRank === 'rank0' && order.mod_rank !== 0) || (selectedRank === 'rank3' && order.mod_rank !== 3))) {
+                            return false;
+                        }
+                        if (orderMode === 'online' && order.user && order.user.status !== 'ingame' && order.user.status !== 'online') {
                             return false;
                         }
                         const lastSeen = new Date(order.last_update || order.last_seen || 0);
@@ -340,49 +425,28 @@ async function searchSyndicateMods() {
         }
     }
     // After all items, display the results
-    displayCombinedResults(itemsWithPrices, heading, syndicateColors[0]);
+    displayCombinedResults(itemsWithPrices, fullHeading, syndicateColors[0]);
     searchInProgress = false;
 }
 
 function displayCombinedResults(items, heading, color) {
     // Save for filtering
     lastDisplayedItems = items;
-    lastHeading = heading;
+    lastHeading = heading + (getSelectedOrderMode() === 'all' ? ' (All Orders)' : ' (Online Only)');
     lastColor = color;
     renderFilteredItems();
 }
 
 function renderFilteredItems() {
-    const filterValue = document.getElementById('itemFilterInput')?.value?.toLowerCase() || '';
-    let items = lastDisplayedItems;
-    if (filterValue) {
-        // Bring the first matching item to the top
-        let firstMatchIdx = items.findIndex(item =>
-            (item.name && item.name.toLowerCase().includes(filterValue)) ||
-            (item.type && item.type.toLowerCase().includes(filterValue)) ||
-            (item.syndicate && item.syndicate.toLowerCase().includes(filterValue))
-        );
-        if (firstMatchIdx > 0) {
-            const firstMatch = items[firstMatchIdx];
-            items = [firstMatch, ...items.slice(0, firstMatchIdx), ...items.slice(firstMatchIdx + 1)];
-        }
-        items = items.filter((item, idx) => {
-            if (firstMatchIdx > -1 && idx === 0) return true;
-            return (
-                (item.name && item.name.toLowerCase().includes(filterValue)) ||
-                (item.type && item.type.toLowerCase().includes(filterValue)) ||
-                (item.syndicate && item.syndicate.toLowerCase().includes(filterValue))
-            );
-        });
-    }
     // Sort items: available (with price) first, then by efficiency ascending (lowest to highest)
-    items.sort((a, b) => {
+    const sortedItems = [...lastDisplayedItems].sort((a, b) => {
         if (a.price && !b.price) return -1;
         if (!a.price && b.price) return 1;
         if (a.efficiency != null && b.efficiency != null) return a.efficiency - b.efficiency;
         return 0;
     });
-    // Render
+    
+    // Only apply filter if button is clicked, not on every input change
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
@@ -392,7 +456,7 @@ function renderFilteredItems() {
             <p style="color: ${getSelectedOrderType() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderType() === 'all' ? 'All Orders' : 'In-Game Only'}</p>
         </div>
         <div class="items-grid">
-            ${items.map(item => `
+            ${sortedItems.map(item => `
                 <div class="item-card" style="border-color: ${item.color};">
                     <div class="item-name">${item.name}</div>
                     <div class="item-category">${item.type}</div>
@@ -412,15 +476,25 @@ function renderFilteredItems() {
     `;
 }
 
-// Live filter event
-const itemFilterInput = document.getElementById('itemFilterInput');
-if (itemFilterInput) {
-    itemFilterInput.addEventListener('input', renderFilteredItems);
+// Add event listener for Apply Filter button
+if (applyFilterBtn) {
+    applyFilterBtn.addEventListener('click', applyFilter);
 } else {
     document.addEventListener('DOMContentLoaded', function() {
-        const input = document.getElementById('itemFilterInput');
-        if (input) input.addEventListener('input', renderFilteredItems);
+        const btn = document.getElementById('applyFilterBtn');
+        if (btn) btn.addEventListener('click', applyFilter);
     });
+}
+
+// Update the applyFilter function to use keyword mapping
+function applyFilter() {
+    const filterValue = document.getElementById('itemFilterInput')?.value?.toLowerCase() || '';
+    currentTypeFilter = getItemTypeFromFilter(filterValue);
+    
+    // If there are already results, trigger a new search with the filter
+    if (lastDisplayedItems.length > 0) {
+        searchSyndicateMods();
+    }
 }
 
 // Add CSS for progress bar animation
