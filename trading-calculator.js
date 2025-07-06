@@ -143,40 +143,39 @@ async function analyzeAllPrimeSets() {
         const itemsData = await itemsResponse.json();
         const allItems = itemsData.payload?.items || [];
         
-        // Step 2: Filter for Prime sets only
-        currentItem.textContent = 'Filtering Prime sets...';
-        progressText.textContent = 'Step 2/3: Filtering Prime sets';
+        // Step 2: Filter for ALL Prime items (not just sets)
+        currentItem.textContent = 'Filtering Prime items...';
+        progressText.textContent = 'Step 2/3: Filtering Prime items';
         progressBar.style.width = '30%';
         
-        const primeSets = allItems.filter(item => {
+        const primeItems = allItems.filter(item => {
             const itemName = item.item_name?.toLowerCase() || '';
-            return itemName.includes('prime') && 
-                   (itemName.includes('set') || 
-                    itemName.includes('warframe') ||
-                    itemName.includes('frame'));
+            return itemName.includes('prime');
         });
         
-        // Step 3: Analyze each Prime set
-        currentItem.textContent = 'Analyzing Prime sets...';
+        console.log(`Found ${primeItems.length} Prime items to analyze`);
+        
+        // Step 3: Analyze each Prime item
+        currentItem.textContent = 'Analyzing Prime items...';
         progressText.textContent = 'Step 3/3: Analyzing trading opportunities';
         
-        for (let i = 0; i < primeSets.length; i++) {
+        for (let i = 0; i < primeItems.length; i++) {
             if (!isAnalyzing) break; // Allow cancellation
             
-            const primeSet = primeSets[i];
-            const progress = 30 + (i / primeSets.length) * 70;
+            const primeItem = primeItems[i];
+            const progress = 30 + (i / primeItems.length) * 70;
             progressBar.style.width = `${progress}%`;
-            currentItem.textContent = `Analyzing: ${primeSet.item_name}`;
+            currentItem.textContent = `Analyzing: ${primeItem.item_name}`;
             
             try {
-                // Get orders for this Prime set
-                const urlName = primeSet.url_name;
+                // Get orders for this Prime item
+                const urlName = primeItem.url_name;
                 const ordersResponse = await fetch(`${API_BASE_URL}/items/${urlName}/orders`);
                 if (ordersResponse.ok) {
                     const ordersData = await ordersResponse.json();
                     const orders = ordersData.payload?.orders || [];
                     if (orders.length > 0) {
-                        const opportunities = analyzePrimeSetOrders(orders, primeSet.item_name, minProfit, maxInvestment);
+                        const opportunities = analyzePrimeItemOrders(orders, primeItem.item_name, minProfit, maxInvestment);
                         if (opportunities.length > 0) {
                             allOpportunities = allOpportunities.concat(opportunities);
                             allOpportunities.sort((a, b) => b.netProfit - a.netProfit);
@@ -188,11 +187,11 @@ async function analyzeAllPrimeSets() {
                 primeSetsAnalyzed++;
                 await new Promise(resolve => setTimeout(resolve, 100));
             } catch (error) {
-                console.error(`Error analyzing ${primeSet.item_name}:`, error);
+                console.error(`Error analyzing ${primeItem.item_name}:`, error);
             }
         }
         currentItem.textContent = 'Analysis complete!';
-        progressText.textContent = `Analyzed ${primeSetsAnalyzed} Prime sets, found ${allOpportunities.length} opportunities`;
+        progressText.textContent = `Analyzed ${primeSetsAnalyzed} Prime items, found ${allOpportunities.length} opportunities`;
         progressBar.style.width = '100%';
         setTimeout(() => {
             analysisProgressDiv.style.display = 'none';
@@ -205,7 +204,7 @@ async function analyzeAllPrimeSets() {
     } finally {
         isAnalyzing = false;
         analyzePrimeSetsBtn.disabled = false;
-        analyzePrimeSetsBtn.textContent = 'Analyze All Prime Sets';
+        analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
     }
 }
 
@@ -242,6 +241,51 @@ function analyzePrimeSetOrders(orders, primeSetName, minProfit, maxInvestment) {
     const roi = (profit / buyPrice) * 100;
     return [{
         primeSetName,
+        buyPrice,
+        sellPrice,
+        grossProfit: profit,
+        taxAmount: 0,
+        netProfit: profit,
+        roi,
+        quantity,
+        totalInvestment: buyPrice * quantity,
+        _wtbOrder: bestWTB // Attach for coloring
+    }];
+}
+
+function analyzePrimeItemOrders(orders, itemName, minProfit, maxInvestment) {
+    const now = new Date();
+    // Only consider orders from users who are strictly 'ingame'
+    const ingameOrders = orders.filter(order => order.user?.status === 'ingame');
+    const wtsOrders = ingameOrders.filter(order => order.order_type === 'sell' && order.quantity > 0);
+    const wtbOrders = ingameOrders.filter(order => order.order_type === 'buy' && order.quantity > 0);
+    if (wtsOrders.length === 0 || wtbOrders.length === 0) {
+        return [];
+    }
+    const bestWTS = wtsOrders.reduce((min, o) => o.platinum < min.platinum ? o : min, wtsOrders[0]);
+    const bestWTB = wtbOrders.reduce((max, o) => o.platinum > max.platinum ? o : max, wtbOrders[0]);
+    // Check age of best WTB
+    const lastSeen = new Date(bestWTB.last_update || bestWTB.last_seen || 0);
+    const daysSinceUpdate = (now - lastSeen) / (1000 * 60 * 60 * 24);
+    if (daysSinceUpdate > maxOrderAge) {
+        return [];
+    }
+    const buyPrice = bestWTB.platinum + 1;
+    const sellPrice = bestWTS.platinum - 1;
+    const quantity = Math.min(bestWTS.quantity, bestWTB.quantity);
+    let profit = sellPrice - buyPrice;
+    if (profit <= 0) {
+        return [];
+    }
+    if (maxInvestment > 0 && buyPrice > maxInvestment) {
+        return [];
+    }
+    if (profit < minProfit) {
+        return [];
+    }
+    const roi = (profit / buyPrice) * 100;
+    return [{
+        itemName,
         buyPrice,
         sellPrice,
         grossProfit: profit,
@@ -295,7 +339,7 @@ function updateTable() {
         
         row.innerHTML = `
             <td>${index + 1}</td>
-            <td>${opp.primeSetName}</td>
+            <td>${opp.itemName || opp.primeSetName}</td>
             <td style="${buyCellStyle}">${opp.buyPrice}</td>
             <td>${opp.sellPrice}</td>
             <td>${orderAgeStr}</td>
@@ -317,7 +361,7 @@ function updateTable() {
     
     const primeSetsAnalyzedElement = document.getElementById('primeSetsAnalyzed');
     if (primeSetsAnalyzedElement) {
-        primeSetsAnalyzedElement.textContent = `Prime sets analyzed: ${primeSetsAnalyzed}`;
+        primeSetsAnalyzedElement.textContent = `Prime items analyzed: ${primeSetsAnalyzed}`;
     }
     
     // Calculate and display summary stats if we have opportunities
@@ -392,11 +436,11 @@ function showMessage(message, type) {
 function stopAnalysis() {
     isAnalyzing = false;
     currentItem.textContent = 'Analysis stopped by user';
-    progressText.textContent = `Analysis stopped. Analyzed ${primeSetsAnalyzed} Prime sets, found ${allOpportunities.length} opportunities`;
+    progressText.textContent = `Analysis stopped. Analyzed ${primeSetsAnalyzed} Prime items, found ${allOpportunities.length} opportunities`;
     
     // Re-enable the analyze button
     analyzePrimeSetsBtn.disabled = false;
-    analyzePrimeSetsBtn.textContent = 'Analyze All Prime Sets';
+    analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
     
     // Hide progress after 3 seconds
     setTimeout(() => {
