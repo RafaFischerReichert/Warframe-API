@@ -13,6 +13,7 @@ import os
 import base64
 import urllib.error
 import http.cookiejar
+from auth_handler import handle_login_request, handle_logout_request, get_auth_status, get_auth_headers, get_session_cookies
 
 # Semaphore for concurrent requests (max 3)
 concurrent_semaphore = threading.Semaphore(3)
@@ -25,6 +26,11 @@ RATE_PERIOD = 1.0  # per second
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         print(f"Received GET request for path: {self.path}")
+        
+        # Handle authentication endpoints
+        if self.path == '/auth/status':
+            self.handle_auth_status_endpoint()
+            return
         
         if self.path.startswith('/api/'):
             # Proxy the request to Warframe Market API
@@ -63,6 +69,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     auth_header = self.headers.get('Authorization')
                     if auth_header:
                         req.add_header('Authorization', auth_header)
+                    else:
+                        # Try to get auth headers from our auth handler
+                        auth_headers = get_auth_headers()
+                        if auth_headers:
+                            for key, value in auth_headers.items():
+                                req.add_header(key, value)
                     
                     with urllib.request.urlopen(req, context=context) as response:
                         data = response.read()
@@ -136,6 +148,17 @@ class ProxyHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length)
         
+        # Handle authentication endpoints
+        if self.path == '/auth/login':
+            self.handle_login_endpoint(post_data)
+            return
+        elif self.path == '/auth/logout':
+            self.handle_logout_endpoint()
+            return
+        elif self.path == '/auth/status':
+            self.handle_auth_status_endpoint()
+            return
+        
         if self.path.startswith('/api/'):
             # Proxy POST requests to Warframe Market API
             api_path = self.path[5:]  # Remove '/api/' prefix
@@ -182,6 +205,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 auth_header = self.headers.get('Authorization')
                 if auth_header:
                     req.add_header('Authorization', auth_header)
+                else:
+                    # Try to get auth headers from our auth handler
+                    auth_headers = get_auth_headers()
+                    if auth_headers:
+                        for key, value in auth_headers.items():
+                            req.add_header(key, value)
                 
                 with urllib.request.urlopen(req, context=context) as response:
                     data = response.read()
@@ -203,6 +232,83 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             error_response = json.dumps({'error': f'Proxy error: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
+    def handle_login_endpoint(self, post_data):
+        """Handle login requests"""
+        try:
+            data = json.loads(post_data.decode('utf-8'))
+            email = data.get('email', '')
+            password = data.get('password', '')
+            
+            if not email or not password:
+                self.send_response(400)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Email and password are required'})
+                self.wfile.write(error_response.encode())
+                return
+            
+            result = handle_login_request(email, password)
+            
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode())
+            
+        except json.JSONDecodeError:
+            self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Invalid JSON data'})
+            self.wfile.write(error_response.encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
+    def handle_logout_endpoint(self):
+        """Handle logout requests"""
+        try:
+            result = handle_logout_request()
+            
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode())
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
+    def handle_auth_status_endpoint(self):
+        """Handle authentication status requests"""
+        try:
+            result = get_auth_status()
+            
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode())
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
             self.wfile.write(error_response.encode())
     
     def do_OPTIONS(self):

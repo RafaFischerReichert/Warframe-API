@@ -43,7 +43,71 @@ document.addEventListener('DOMContentLoaded', function() {
             if (maxOrderAgeValue) maxOrderAgeValue.textContent = this.value;
         });
     }
+    // Check authentication status on page load
+    checkAuthStatus();
 });
+
+// Authentication status checking
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/auth/status', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        // Add auth status indicator to the page
+        addAuthStatusIndicator(result);
+    } catch (error) {
+        console.error('Auth status check error:', error);
+    }
+}
+
+function addAuthStatusIndicator(authStatus) {
+    // Remove existing auth indicator if present
+    const existingIndicator = document.getElementById('auth-indicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+    
+    // Create auth status indicator
+    const authIndicator = document.createElement('div');
+    authIndicator.id = 'auth-indicator';
+    authIndicator.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-size: 0.8em;
+        font-weight: bold;
+        z-index: 1000;
+        transition: all 0.3s ease;
+    `;
+    
+    if (authStatus.logged_in) {
+        authIndicator.style.background = 'rgba(0, 255, 0, 0.2)';
+        authIndicator.style.border = '1px solid #00ff00';
+        authIndicator.style.color = '#00ff00';
+        authIndicator.innerHTML = `
+            <span>✓ Logged In</span>
+            <br><small>Session: ${Math.floor(authStatus.session_age / 60)}m</small>
+        `;
+    } else {
+        authIndicator.style.background = 'rgba(255, 0, 0, 0.2)';
+        authIndicator.style.border = '1px solid #ff0000';
+        authIndicator.style.color = '#ff0000';
+        authIndicator.innerHTML = `
+            <span>✗ Not Logged In</span>
+            <br><small><a href="login.html" style="color: #ff0000;">Login</a></small>
+        `;
+    }
+    
+    document.body.appendChild(authIndicator);
+}
 
 async function analyzeAllPrimeSets() {
     if (isAnalyzing) return;
