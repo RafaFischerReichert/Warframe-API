@@ -305,10 +305,116 @@ h1 {
 }
 
 .rank-description {
-    color: #b0b0b0;
+    text-align: center;
+    margin-top: 10px;
+    color: #00d4ff;
     font-size: 0.9rem;
-    margin: 0;
-    transition: color 0.3s ease;
+    font-style: italic;
+}
+
+/* Order Type Selection Section */
+.order-type-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: rgba(255, 107, 107, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.order-type-switch-container {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.order-type-switch {
+    position: relative;
+    display: inline-block;
+    width: 200px;
+    height: 50px;
+}
+
+.order-type-switch-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.order-type-switch-label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 107, 107, 0.3);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+
+.order-type-switch-label:hover {
+    border-color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.1);
+}
+
+.order-type-switch-slider {
+    position: absolute;
+    height: 36px;
+    width: 36px;
+    left: 6px;
+    bottom: 6px;
+    background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+}
+
+.order-type-switch-input:checked + .order-type-switch-label .order-type-switch-slider {
+    transform: translateX(150px);
+}
+
+.order-type-switch-text {
+    font-size: 0.8rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+.all-orders-text {
+    color: #ff6b6b;
+}
+
+.ingame-orders-text {
+    color: #4ecdc4;
+}
+
+.order-type-switch-input:checked + .order-type-switch-label .all-orders-text {
+    color: #888;
+}
+
+.order-type-switch-input:checked + .order-type-switch-label .ingame-orders-text {
+    color: #4ecdc4;
+}
+
+.order-type-switch-input:not(:checked) + .order-type-switch-label .all-orders-text {
+    color: #ff6b6b;
+}
+
+.order-type-switch-input:not(:checked) + .order-type-switch-label .ingame-orders-text {
+    color: #888;
+}
+
+.order-type-description {
+    text-align: center;
+    margin-top: 10px;
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    font-style: italic;
 }
 
 #results {

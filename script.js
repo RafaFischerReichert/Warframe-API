@@ -136,6 +136,9 @@ searchInput.addEventListener('keypress', function(e) {
 // Rank switch event listener
 rankSwitch.addEventListener('change', updateRankDescription);
 
+// Order type switch event listener
+orderTypeSwitch.addEventListener('change', updateOrderTypeDescription);
+
 // Time range preset buttons event listeners
 document.addEventListener('DOMContentLoaded', function() {
     const presetButtons = document.querySelectorAll('.time-preset-btn');
@@ -158,6 +161,18 @@ function updateRankDescription() {
     } else {
         rankDescription.textContent = 'Searching for Rank 0 mods (unranked)';
         rankDescription.style.color = '#00d4ff';
+    }
+}
+
+// Update order type description
+function updateOrderTypeDescription() {
+    const isIngameOnly = orderTypeSwitch.checked;
+    if (isIngameOnly) {
+        orderTypeDescription.textContent = 'Showing only in-game orders (online players)';
+        orderTypeDescription.style.color = '#4ecdc4';
+    } else {
+        orderTypeDescription.textContent = 'Showing all orders (including offline)';
+        orderTypeDescription.style.color = '#ff6b6b';
     }
 }
 
@@ -301,6 +316,7 @@ async function searchSyndicateMods() {
             <h3 style="color: ${syndicateColors[0]};">${fullHeading}</h3>
             <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">Time range: ${timeRangeDisplay.textContent}</p>
             <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
+            <p style="color: ${getSelectedOrderType() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderType() === 'all' ? 'All Orders' : 'In-Game Only'}</p>
             <div class="progress-bar-container">
                 <div id="progressBar" class="progress-bar" style="width: 0%; background: linear-gradient(90deg, ${syndicateColors[0]}, #00d4ff);"></div>
             </div>
@@ -370,7 +386,16 @@ async function searchSyndicateMods() {
                             return false;
                         }
                         const lastSeen = new Date(order.last_update || order.last_seen || 0);
-                        return (now - lastSeen) / (1000 * 60 * 60 * 24) <= parseInt(timeRangeSlider.value);
+                        const isWithinTimeRange = (now - lastSeen) / (1000 * 60 * 60 * 24) <= parseInt(timeRangeSlider.value);
+                        
+                        // Filter by order type if "in-game only" is selected
+                        const selectedOrderType = getSelectedOrderType();
+                        if (selectedOrderType === 'ingame') {
+                            // Only include orders where user is online (status === 'online' or 'ingame')
+                            return isWithinTimeRange && (order.user.status === 'online' || order.user.status === 'ingame');
+                        }
+                        
+                        return isWithinTimeRange;
                     });
                     orderCount = recentOrders.length;
                     if (orderCount > 0) {
@@ -428,6 +453,7 @@ function renderFilteredItems() {
             <h3 style="color: ${lastColor};">${lastHeading}</h3>
             <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">Time range: ${timeRangeDisplay.textContent}</p>
             <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
+            <p style="color: ${getSelectedOrderType() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderType() === 'all' ? 'All Orders' : 'In-Game Only'}</p>
         </div>
         <div class="items-grid">
             ${sortedItems.map(item => `
