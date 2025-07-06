@@ -1,6 +1,15 @@
 // Warframe Trading Calculator - Prime Sets Analysis
 const API_BASE_URL = '/api'; // Use Python proxy server to avoid CORS issues
 
+// ===== CONFIGURATION =====
+const CONFIG = {
+    BATCH_SIZE: 5,           // Change from 3 to 5 (process 5 items simultaneously)
+    BATCH_DELAY: 200,        // Change from 333 to 200ms (1000ms ÷ 5 = 200ms)
+    ITEM_DELAY: 200,         // Change from 333 to 200ms
+    MAX_OPPORTUNITIES: 20    // Maximum number of opportunities to display
+};
+// ========================
+
 // DOM elements
 const minProfitInput = document.getElementById('minProfitInput');
 const maxInvestmentInput = document.getElementById('maxInvestmentInput');
@@ -23,6 +32,8 @@ let allOpportunities = [];
 let primeSetsAnalyzed = 0;
 let isAnalyzing = false;
 let maxOrderAge = parseInt(maxOrderAgeSlider?.value) || 30;
+let rateLimitStatus = { rate_limited: false, elapsed_seconds: 0, estimated_wait: 0 };
+let rateLimitCheckInterval = null;
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
@@ -45,6 +56,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Check authentication status on page load
     checkAuthStatus();
+    // Start rate limit monitoring
+    startRateLimitMonitoring();
 });
 
 // Authentication status checking
@@ -159,36 +172,56 @@ async function analyzeAllPrimeSets() {
         currentItem.textContent = 'Analyzing Prime items...';
         progressText.textContent = 'Step 3/3: Analyzing trading opportunities';
         
-        for (let i = 0; i < primeItems.length; i++) {
+        // Process items in batches for parallel processing
+        const batchSize = CONFIG.BATCH_SIZE; // Use the configured batch size
+        for (let i = 0; i < primeItems.length; i += batchSize) {
             if (!isAnalyzing) break; // Allow cancellation
             
-            const primeItem = primeItems[i];
-            const progress = 30 + (i / primeItems.length) * 70;
-            progressBar.style.width = `${progress}%`;
-            currentItem.textContent = `Analyzing: ${primeItem.item_name}`;
-            
-            try {
-                // Get orders for this Prime item
-                const urlName = primeItem.url_name;
-                const ordersResponse = await fetch(`${API_BASE_URL}/items/${urlName}/orders`);
-                if (ordersResponse.ok) {
-                    const ordersData = await ordersResponse.json();
-                    const orders = ordersData.payload?.orders || [];
-                    if (orders.length > 0) {
-                        const opportunities = analyzePrimeItemOrders(orders, primeItem.item_name, minProfit, maxInvestment);
-                        if (opportunities.length > 0) {
-                            allOpportunities = allOpportunities.concat(opportunities);
-                            allOpportunities.sort((a, b) => b.netProfit - a.netProfit);
-                            allOpportunities = allOpportunities.slice(0, 20);
-                            updateTable();
+            const batch = primeItems.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (primeItem, batchIndex) => {
+                const itemIndex = i + batchIndex;
+                const progress = 30 + (itemIndex / primeItems.length) * 70;
+                progressBar.style.width = `${progress}%`;
+                currentItem.textContent = `Analyzing: ${primeItem.item_name}`;
+                
+                try {
+                    // Get orders for this Prime item
+                    const urlName = primeItem.url_name;
+                    const ordersResponse = await fetch(`${API_BASE_URL}/items/${urlName}/orders`);
+                    if (ordersResponse.ok) {
+                        const ordersData = await ordersResponse.json();
+                        const orders = ordersData.payload?.orders || [];
+                        if (orders.length > 0) {
+                            const opportunities = analyzePrimeItemOrders(orders, primeItem.item_name, minProfit, maxInvestment);
+                            if (opportunities.length > 0) {
+                                return opportunities;
+                            }
                         }
                     }
+                    primeSetsAnalyzed++;
+                } catch (error) {
+                    console.error(`Error analyzing ${primeItem.item_name}:`, error);
                 }
-                primeSetsAnalyzed++;
-                await new Promise(resolve => setTimeout(resolve, 100));
-            } catch (error) {
-                console.error(`Error analyzing ${primeItem.item_name}:`, error);
+                // Small delay between individual items
+                await new Promise(resolve => setTimeout(resolve, CONFIG.ITEM_DELAY));
+                return [];
+            });
+            
+            // Wait for all items in the batch to complete
+            const batchResults = await Promise.all(batchPromises);
+            
+            // Add all opportunities from this batch
+            for (const opportunities of batchResults) {
+                if (opportunities.length > 0) {
+                    allOpportunities = allOpportunities.concat(opportunities);
+                    allOpportunities.sort((a, b) => b.netProfit - a.netProfit);
+                    allOpportunities = allOpportunities.slice(0, CONFIG.MAX_OPPORTUNITIES);
+                    updateTable();
+                }
             }
+            
+            // Small delay between batches to avoid overwhelming the server
+            await new Promise(resolve => setTimeout(resolve, CONFIG.BATCH_DELAY));
         }
         currentItem.textContent = 'Analysis complete!';
         progressText.textContent = `Analyzed ${primeSetsAnalyzed} Prime items, found ${allOpportunities.length} opportunities`;
@@ -460,4 +493,97 @@ function selectRow(clickedRow) {
     // Add selection to clicked row
     clickedRow.classList.add('selected');
     clickedRow.style.background = 'rgba(0, 212, 255, 0.2)';
+}
+
+// Rate limit monitoring
+async function checkRateLimitStatus() {
+    try {
+        const response = await fetch('/rate-limit-status', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('[RATE LIMIT] Status check result:', result);
+            rateLimitStatus = result;
+            updateRateLimitDisplay();
+        }
+    } catch (error) {
+        console.error('Rate limit status check error:', error);
+    }
+}
+
+function startRateLimitMonitoring() {
+    console.log('[RATE LIMIT] Starting rate limit monitoring');
+    // Check rate limit status every 2 seconds
+    rateLimitCheckInterval = setInterval(checkRateLimitStatus, 2000);
+    // Initial check
+    checkRateLimitStatus();
+}
+
+function stopRateLimitMonitoring() {
+    if (rateLimitCheckInterval) {
+        clearInterval(rateLimitCheckInterval);
+        rateLimitCheckInterval = null;
+    }
+}
+
+function updateRateLimitDisplay() {
+    console.log('[RATE LIMIT] Updating display, status:', rateLimitStatus);
+    
+    // Remove existing rate limit indicator if present
+    const existingIndicator = document.getElementById('rate-limit-indicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+    
+    if (rateLimitStatus.rate_limited) {
+        console.log('[RATE LIMIT] Creating rate limit indicator');
+        // Create rate limit indicator
+        const rateLimitIndicator = document.createElement('div');
+        rateLimitIndicator.id = 'rate-limit-indicator';
+        rateLimitIndicator.style.cssText = `
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: bold;
+            z-index: 1000;
+            background: rgba(255, 165, 0, 0.9);
+            border: 2px solid #ff6600;
+            color: #fff;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+            animation: pulse 2s infinite;
+        `;
+        
+        const waitTime = Math.ceil(rateLimitStatus.estimated_wait);
+        rateLimitIndicator.innerHTML = `
+            <div style="font-size: 1.1em; margin-bottom: 5px;">⚠️ Rate Limited</div>
+            <div style="font-size: 0.8em;">Wait: ${waitTime}s</div>
+            <div style="font-size: 0.7em; margin-top: 5px;">API requests paused</div>
+        `;
+        
+        document.body.appendChild(rateLimitIndicator);
+        
+        // Disable analyze button if rate limited
+        if (analyzePrimeSetsBtn) {
+            analyzePrimeSetsBtn.disabled = true;
+            analyzePrimeSetsBtn.textContent = 'Rate Limited - Please Wait';
+            analyzePrimeSetsBtn.style.background = 'rgba(255, 165, 0, 0.7)';
+        }
+    } else {
+        console.log('[RATE LIMIT] Clearing rate limit indicator');
+        // Re-enable analyze button if not rate limited
+        if (analyzePrimeSetsBtn && !isAnalyzing) {
+            analyzePrimeSetsBtn.disabled = false;
+            analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
+            analyzePrimeSetsBtn.style.background = '';
+        }
+    }
 } 

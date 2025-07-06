@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warframe Trading Calculator</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .rate-limit-warning {
+            animation: pulse 2s infinite;
+        }
+    </style>
 </head>
 <body>
     <div class="container">

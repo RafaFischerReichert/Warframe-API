@@ -15,13 +15,55 @@ import urllib.error
 import http.cookiejar
 from auth_handler import handle_login_request, handle_logout_request, get_auth_status, get_auth_headers, get_session_cookies
 
-# Semaphore for concurrent requests (max 3)
-concurrent_semaphore = threading.Semaphore(3)
-# List to track timestamps of last requests for rate limiting
+# ===== CONFIGURATION =====
+REQUESTS_PER_SECOND = 5  # Change from 3 to 5
+# ========================
+
+# Rate limiting detection
+rate_limit_detected = False
+rate_limit_start_time = 0
 rate_limit_lock = threading.Lock()
+
+# Semaphore for concurrent requests (max = REQUESTS_PER_SECOND * 2)
+concurrent_semaphore = threading.Semaphore(REQUESTS_PER_SECOND * 2)
+# List to track timestamps of last requests for rate limiting
 request_timestamps = []  # stores timestamps of last requests
-RATE_LIMIT = 3  # max requests
+RATE_LIMIT = REQUESTS_PER_SECOND  # max requests
 RATE_PERIOD = 1.0  # per second
+
+def get_rate_limit_status():
+    """Get current rate limiting status"""
+    global rate_limit_detected, rate_limit_start_time
+    with rate_limit_lock:
+        if rate_limit_detected:
+            elapsed = time.time() - rate_limit_start_time
+            return {
+                "rate_limited": True,
+                "elapsed_seconds": elapsed,
+                "estimated_wait": max(0, 60 - elapsed)  # Assume 60 second cooldown
+            }
+        else:
+            return {
+                "rate_limited": False,
+                "elapsed_seconds": 0,
+                "estimated_wait": 0
+            }
+
+def set_rate_limited():
+    """Mark that we've been rate limited"""
+    global rate_limit_detected, rate_limit_start_time
+    with rate_limit_lock:
+        rate_limit_detected = True
+        rate_limit_start_time = time.time()
+        print(f"[RATE LIMIT] Rate limiting detected at {time.strftime('%H:%M:%S')}")
+
+def clear_rate_limited():
+    """Clear rate limiting status"""
+    global rate_limit_detected
+    with rate_limit_lock:
+        if rate_limit_detected:
+            print(f"[RATE LIMIT] Rate limiting cleared at {time.strftime('%H:%M:%S')}")
+        rate_limit_detected = False
 
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -30,6 +72,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # Handle authentication endpoints
         if self.path == '/auth/status':
             self.handle_auth_status_endpoint()
+            return
+        
+        # Handle rate limit status endpoint
+        if self.path == '/rate-limit-status':
+            self.handle_rate_limit_status_endpoint()
             return
         
         if self.path.startswith('/api/'):
@@ -80,6 +127,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
                         data = response.read()
                         content_type = response.headers.get('Content-Type', 'application/json')
                         
+                        # Check for rate limiting
+                        if response.status == 429:
+                            set_rate_limited()
+                            print(f"[RATE LIMIT] HTTP 429 detected for {api_url}")
+                        elif response.status == 200:
+                            # Clear rate limiting if we get a successful response
+                            clear_rate_limited()
+                        
                         print(f"API response: status={response.status}, content-type={content_type}, data_length={len(data)}")
                         print(f"First 100 chars of response: {data[:100]}")
                         
@@ -95,6 +150,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     
             except Exception as e:
                 print(f"Error proxying request: {e}")
+                
+                # Check for rate limiting in error message
+                if "429" in str(e) or "Too Many Requests" in str(e):
+                    set_rate_limited()
+                    print(f"[RATE LIMIT] Rate limiting detected via error: {e}")
+                
                 self.send_response(500)
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Content-Type', 'application/json')
@@ -216,6 +277,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     data = response.read()
                     content_type = response.headers.get('Content-Type', 'application/json')
                     
+                    # Check for rate limiting
+                    if response.status == 429:
+                        set_rate_limited()
+                        print(f"[RATE LIMIT] HTTP 429 detected for {api_url}")
+                    elif response.status == 200:
+                        # Clear rate limiting if we get a successful response
+                        clear_rate_limited()
+                    
                     self.send_response(response.status)
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -227,6 +296,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     
         except Exception as e:
             print(f"Error proxying POST request: {e}")
+            
+            # Check for rate limiting in error message
+            if "429" in str(e) or "Too Many Requests" in str(e):
+                set_rate_limited()
+                print(f"[RATE LIMIT] Rate limiting detected via POST error: {e}")
+            
             self.send_response(500)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-Type', 'application/json')
@@ -310,7 +385,26 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
             self.wfile.write(error_response.encode())
-    
+
+    def handle_rate_limit_status_endpoint(self):
+        """Handle rate limit status requests"""
+        try:
+            result = get_rate_limit_status()
+            
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode())
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
     def do_OPTIONS(self):
         # Handle CORS preflight requests
         self.send_response(200)
