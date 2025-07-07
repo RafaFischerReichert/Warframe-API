@@ -169,7 +169,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 if self.path == '/':
                     self.path = '/trading-calculator.html'
                 
-                with open('.' + self.path, 'rb') as f:
+                # Serve files from the frontend directory
+                file_path = './frontend' + self.path
+                with open(file_path, 'rb') as f:
                     content = f.read()
                 
                 # Determine content type
