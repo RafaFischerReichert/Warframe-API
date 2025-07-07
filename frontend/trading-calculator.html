@@ -65,31 +65,78 @@
 
         <!-- Trading Opportunities Table -->
         <div class="trading-table-container">
-            <h3 style="color: #00d4ff; text-align: center; margin-bottom: 20px;">Top Trading Opportunities</h3>
+            <h3 style="color: #00d4ff; text-align: center; margin-bottom: 20px;">Trading Workflow</h3>
             <div class="table-controls">
                 <span id="primeSetsAnalyzed" class="mods-counter">Prime items analyzed: 0</span>
                 <span id="totalOpportunities" class="opportunities-counter">Total opportunities: 0</span>
             </div>
-            <div class="trading-table-wrapper">
-                <table id="tradingTable" class="trading-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Prime Item</th>
-                            <th>Buy Price</th>
-                            <th>Sell Price</th>
-                            <th>Order Age (days)</th>
-                            <th>Tax</th>
-                            <th>Net Profit</th>
-                            <th>ROI %</th>
-                            <th>Quantity</th>
-                            <th>Total Investment</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tradingTableBody">
-                        <!-- Table rows will be populated here -->
-                    </tbody>
-                </table>
+            
+            <!-- Trading Workflow Layout -->
+            <div class="trading-workflow-container">
+                <!-- Top Row: Pending and Bought Items -->
+                <div class="trading-panels-row">
+                    <!-- Left Panel: Pending Items -->
+                    <div class="trading-panel pending-panel">
+                        <h4 style="color: #ffd700; text-align: center; margin-bottom: 15px;">📋 Pending Orders</h4>
+                        <div class="panel-description">
+                            <p style="font-size: 0.9em; color: #b0b0b0; text-align: center; margin-bottom: 15px;">
+                                Items you've created WTB orders for. Click "Bought" when you acquire the item.
+                            </p>
+                        </div>
+                        <div id="pendingItemsContainer" class="items-container">
+                            <div class="empty-state">
+                                <p style="color: #666; text-align: center; font-style: italic;">No pending orders</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Bought Items -->
+                    <div class="trading-panel bought-panel">
+                        <h4 style="color: #00ff00; text-align: center; margin-bottom: 15px;">💰 Bought Items</h4>
+                        <div class="panel-description">
+                            <p style="font-size: 0.9em; color: #b0b0b0; text-align: center; margin-bottom: 15px;">
+                                Items you've acquired. Click "Sold" when you sell the item.
+                            </p>
+                        </div>
+                        <div id="boughtItemsContainer" class="items-container">
+                            <div class="empty-state">
+                                <p style="color: #666; text-align: center; font-style: italic;">No bought items</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Trading Opportunities -->
+                <div class="trading-opportunities-section">
+                    <h4 style="color: #00d4ff; text-align: center; margin-bottom: 15px;">🎯 Top Trading Opportunities</h4>
+                    <div class="panel-description">
+                        <p style="font-size: 0.9em; color: #b0b0b0; text-align: center; margin-bottom: 15px;">
+                            Click "Create WTB" to start trading an item
+                        </p>
+                    </div>
+                    <div class="trading-table-wrapper">
+                        <table id="tradingTable" class="trading-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Prime Item</th>
+                                    <th>Buy Price</th>
+                                    <th>Sell Price</th>
+                                    <th>Order Age (days)</th>
+                                    <th>Tax</th>
+                                    <th>Net Profit</th>
+                                    <th>ROI %</th>
+                                    <th>Quantity</th>
+                                    <th>Total Investment</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tradingTableBody">
+                                <!-- Table rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
