@@ -152,25 +152,17 @@ The application includes comprehensive rate limiting protection:
 
 ---
 
-## Project Structure
+## Project Structure (Refactored)
 
-```
-warframe_api/
-├── index.html                 # Syndicate search page
-├── trading-calculator.html    # Trading calculator UI
-├── login.html                 # Authentication page
-├── script.js                  # Syndicate search logic
-├── trading-calculator.js      # Trading calculator logic
-├── login.js                   # Authentication logic
-├── style.css                  # App styling
-├── proxy_server.py            # Python proxy server (CORS + API proxy)
-├── auth_handler.py            # Authentication backend
-├── syndicate_items.json       # Syndicate mod data
-├── test_auth.py               # Authentication testing
-├── README.md                  # This file
-├── LICENSE                    # License info
-└── .gitignore                 # Git ignore rules
-```
+- `backend/` — Python backend code (auth_handler.py, proxy_server.py)
+- `frontend/` — All frontend code
+    - `index.html`, `login.html`, `trading-calculator.html`
+    - `js/` — JavaScript files
+    - `css/` — CSS files
+- `data/` — Data files (syndicate_items.json, SYNDICATE_ITEMS_README.md)
+- `tests/` — (For future test files)
+
+All file references in HTML have been updated to match this structure.
 
 ---
 
