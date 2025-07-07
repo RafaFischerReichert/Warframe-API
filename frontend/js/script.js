@@ -20,6 +20,13 @@ let SYNDICATES = {};
 // Add global filter variable
 let currentTypeFilter = '';
 
+// Global state variables
+let lastDisplayedItems = [];
+let lastHeading = '';
+let lastColor = '';
+let searchInProgress = false;
+let cancelSearch = false;
+
 // Add filter keywords mapping
 const FILTER_KEYWORDS = {
     'mod': ['mod', 'mods', 'modification', 'modifications', 'augment', 'augments', 'augmentation', 'augmentations'],
@@ -79,7 +86,6 @@ async function loadSyndicateData() {
 }
 
 // Linear slider: use value directly
-
 timeRangeSlider.addEventListener('input', function() {
     updateTimeRangeDisplay();
     updatePresetButtons();
@@ -115,12 +121,39 @@ function updatePresetButtons() {
     });
 }
 
-// Event listeners
-document.addEventListener('DOMContentLoaded', function() {
-    searchBtn.addEventListener('click', searchSyndicateMods);
-    // Check authentication status on page load
-    checkAuthStatus();
-});
+// Update rank description
+function updateRankDescription() {
+    const isRank3 = rankSwitch.checked;
+    if (isRank3) {
+        rankDescription.textContent = 'Searching for Rank 3 mods (max rank)';
+        rankDescription.style.color = '#ff6b6b';
+    } else {
+        rankDescription.textContent = 'Searching for Rank 0 mods (unranked)';
+        rankDescription.style.color = '#00d4ff';
+    }
+}
+
+// Get selected rank type
+function getSelectedRank() {
+    return rankSwitch.checked ? 'rank3' : 'rank0';
+}
+
+// Update order mode description
+function updateOrderModeDescription() {
+    const isOnline = !orderModeSwitch.checked;
+    if (isOnline) {
+        orderModeDescription.textContent = 'Showing only online player orders';
+        orderModeDescription.style.color = '#b0b0b0';
+    } else {
+        orderModeDescription.textContent = 'Showing all player orders';
+        orderModeDescription.style.color = '#ff6b6b';
+    }
+}
+
+function getSelectedOrderMode() {
+    // Checkbox unchecked = online only, checked = all orders
+    return orderModeSwitch && orderModeSwitch.checked ? 'all' : 'online';
+}
 
 // Authentication status checking
 async function checkAuthStatus() {
@@ -184,12 +217,30 @@ function addAuthStatusIndicator(authStatus) {
     document.body.appendChild(authIndicator);
 }
 
-// Add Enter key support for search input
-searchInput.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
+// Update the applyFilter function to use keyword mapping
+function applyFilter() {
+    const filterValue = document.getElementById('itemFilterInput')?.value?.toLowerCase() || '';
+    currentTypeFilter = getItemTypeFromFilter(filterValue);
+    
+    // If there are already results, trigger a new search with the filter
+    if (lastDisplayedItems.length > 0) {
         searchSyndicateMods();
     }
-  
+}
+
+// Single DOMContentLoaded event listener to initialize everything
+document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize event listeners
+    searchBtn.addEventListener('click', searchSyndicateMods);
+    
+    // Add Enter key support for search input
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchSyndicateMods();
+        }
+    });
+    
+    // Time preset button event listeners
     const presetButtons = document.querySelectorAll('.time-preset-btn');
     presetButtons.forEach(button => {
         button.addEventListener('click', function() {
@@ -204,56 +255,17 @@ searchInput.addEventListener('keypress', function(e) {
     if (applyFilterBtn) {
         applyFilterBtn.addEventListener('click', applyFilter);
     }
-});
-
-// Update rank description
-function updateRankDescription() {
-    const isRank3 = rankSwitch.checked;
-    if (isRank3) {
-        rankDescription.textContent = 'Searching for Rank 3 mods (max rank)';
-        rankDescription.style.color = '#ff6b6b';
-    } else {
-        rankDescription.textContent = 'Searching for Rank 0 mods (unranked)';
-        rankDescription.style.color = '#00d4ff';
-    }
-}
-
-// Get selected rank type
-function getSelectedRank() {
-    return rankSwitch.checked ? 'rank3' : 'rank0';
-}
-
-// Update order mode description
-function updateOrderModeDescription() {
-    const isOnline = !orderModeSwitch.checked;
-    if (isOnline) {
-        orderModeDescription.textContent = 'Showing only online player orders';
-        orderModeDescription.style.color = '#b0b0b0';
-    } else {
-        orderModeDescription.textContent = 'Showing all player orders';
-        orderModeDescription.style.color = '#ff6b6b';
-    }
-}
-
-function getSelectedOrderMode() {
-    // Checkbox unchecked = online only, checked = all orders
-    return orderModeSwitch && orderModeSwitch.checked ? 'all' : 'online';
-}
-
-// Initialize the application by loading syndicate data
-document.addEventListener('DOMContentLoaded', async function() {
+    
+    // Check authentication status on page load
+    checkAuthStatus();
+    
+    // Load syndicate data and initialize UI
     await loadSyndicateData();
     updateTimeRangeDisplay(); // Initialize the display
     updatePresetButtons(); // Initialize preset button states
     updateRankDescription(); // Initialize rank description
     updateOrderModeDescription(); // Initialize order mode description
 });
-
-let lastDisplayedItems = [];
-let lastHeading = '';
-let lastColor = '';
-let searchInProgress = false;
-let cancelSearch = false;
 
 async function searchSyndicateMods() {
     if (searchInProgress) return;
@@ -518,19 +530,6 @@ function renderFilteredItems() {
             `).join('')}
         </div>
     `;
-}
-
-
-
-// Update the applyFilter function to use keyword mapping
-function applyFilter() {
-    const filterValue = document.getElementById('itemFilterInput')?.value?.toLowerCase() || '';
-    currentTypeFilter = getItemTypeFromFilter(filterValue);
-    
-    // If there are already results, trigger a new search with the filter
-    if (lastDisplayedItems.length > 0) {
-        searchSyndicateMods();
-    }
 }
 
 // Add CSS for progress bar animation
