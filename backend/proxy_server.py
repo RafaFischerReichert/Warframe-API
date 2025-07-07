@@ -169,8 +169,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 if self.path == '/':
                     self.path = '/trading-calculator.html'
                 
-                # Serve files from the frontend directory
-                file_path = './frontend' + self.path
+                # Serve files from frontend or data directory
+                if self.path.startswith('/js/') or self.path.startswith('/css/') or self.path.endswith('.html') or self.path == '/trading-calculator.html' or self.path == '/login.html' or self.path == '/index.html':
+                    file_path = './frontend' + self.path
+                elif self.path == '/syndicate_items.json':
+                    file_path = './data/syndicate_items.json'
+                else:
+                    # fallback to frontend for any other static
+                    file_path = './frontend' + self.path
                 with open(file_path, 'rb') as f:
                     content = f.read()
                 

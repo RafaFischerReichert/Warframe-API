@@ -59,7 +59,7 @@ function getItemTypeFromFilter(filterValue) {
 // Load syndicate data from JSON file
 async function loadSyndicateData() {
     try {
-        const response = await fetch('syndicate_items.json');
+        const response = await fetch('../data/syndicate_items.json');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
