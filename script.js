@@ -12,6 +12,7 @@ const searchInput = document.getElementById('searchInput');
 const orderModeSwitch = document.getElementById('orderModeSwitch');
 const orderModeDescription = document.getElementById('orderModeDescription');
 const applyFilterBtn = document.getElementById('applyFilterBtn');
+const standingInput = document.getElementById('standingInput');
 
 // Global variable to store syndicate data
 let SYNDICATES = {};
@@ -322,6 +323,14 @@ async function searchSyndicateMods() {
             itemsToAdd = syndicateData.items.filter(item => 
                 item.type && item.type.toLowerCase().includes(currentTypeFilter)
             );
+        }
+        // Filter by standing if input is present and valid
+        let standingValue = 0;
+        if (standingInput && standingInput.value !== '' && !isNaN(standingInput.value)) {
+            standingValue = parseInt(standingInput.value, 10);
+            if (!isNaN(standingValue)) {
+                itemsToAdd = itemsToAdd.filter(item => typeof item.standing_cost === 'number' && item.standing_cost <= standingValue);
+            }
         }
         combinedItems = combinedItems.concat(itemsToAdd.map(item => ({...item, syndicate: syndicateData.name, color: syndicateData.color})));
         syndicateNames.push(syndicateData.name);
