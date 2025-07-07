@@ -708,50 +708,88 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # Start batch processing in a background thread
         def batch_worker():
             orders_data = {}
+            
+            def fetch_item_orders(item, job_id):
+                """Fetch orders for a single item - designed to be run in a thread"""
+                item_name = str(item.get('item_name') or '')
+                item_id = str(item.get('id') or '')
+                url_name = str(item.get('url_name') or '')
+                print(f'[DEBUG] [Job {job_id}] Processing: {item_name} (ID: {item_id}, URL: {url_name})')
+                
+                if not url_name:
+                    print(f'[DEBUG] [Job {job_id}] Skipping {item_name}: no url_name')
+                    return item_id, []
+                
+                api_url = f'https://api.warframe.market/v1/items/{url_name}/orders?include=item'
+                try:
+                    context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                    req = urllib.request.Request(api_url)
+                    req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+                    req.add_header('Platform', 'pc')
+                    req.add_header('accept', 'application/json')
+                    
+                    with urllib.request.urlopen(req, context=context) as response:
+                        status = response.status
+                        data = response.read()
+                        try:
+                            orders_json = json.loads(data.decode('utf-8'))
+                            all_orders = orders_json.get('payload', {}).get('orders', [])
+                            ingame_orders = [o for o in all_orders if o.get('user', {}).get('status') == 'ingame']
+                            print(f'[DEBUG] [Job {job_id}] {item_name}: {len(all_orders)} total orders, {len(ingame_orders)} ingame orders')
+                            return item_id, ingame_orders
+                        except Exception as je:
+                            print(f'[DEBUG] [Job {job_id}] JSON error for {item_name} (status {status}): {je}\nResponse: {data[:200]!r}')
+                            return item_id, []
+                except Exception as e:
+                    print(f'[DEBUG] [Job {job_id}] Error fetching orders for {item_name}: {e}')
+                    return item_id, []
+            
             for batch_start in range(0, len(prime_items), batch_size):
                 if trading_jobs[job_id]['cancelled']:
                     print(f'[DEBUG] Job {job_id} cancelled during batch processing')
                     trading_jobs[job_id]['status'] = 'cancelled'
                     return
+                
                 batch = prime_items[batch_start:batch_start+batch_size]
+                batch_start_time = time.time()
+                print(f'[DEBUG] [Job {job_id}] Starting concurrent batch {batch_start//batch_size+1} with {len(batch)} items')
+                
+                # Create threads for concurrent API requests
+                threads = []
+                results = {}
+                results_lock = threading.Lock()
+                
+                # Start all threads for this batch
                 for item in batch:
-                    item_name = str(item.get('item_name') or '')
-                    item_id = str(item.get('id') or '')
-                    url_name = str(item.get('url_name') or '')
-                    print(f'[DEBUG] [Job {job_id}] Processing: {item_name} (ID: {item_id}, URL: {url_name})')
-                    if not url_name:
-                        print(f'[DEBUG] [Job {job_id}] Skipping {item_name}: no url_name')
-                        continue
-                    api_url = f'https://api.warframe.market/v1/items/{url_name}/orders?include=item'
-                    try:
-                        context = ssl.create_default_context()
-                        context.check_hostname = False
-                        context.verify_mode = ssl.CERT_NONE
-                        req = urllib.request.Request(api_url)
-                        req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
-                        req.add_header('Platform', 'pc')
-                        req.add_header('accept', 'application/json')
-                        with urllib.request.urlopen(req, context=context) as response:
-                            status = response.status
-                            data = response.read()
-                            try:
-                                orders_json = json.loads(data.decode('utf-8'))
-                                all_orders = orders_json.get('payload', {}).get('orders', [])
-                                ingame_orders = [o for o in all_orders if o.get('user', {}).get('status') == 'ingame']
-                                print(f'[DEBUG] [Job {job_id}] {item_name}: {len(all_orders)} total orders, {len(ingame_orders)} ingame orders')
-                                orders_data[item_id] = ingame_orders
-                            except Exception as je:
-                                print(f'[DEBUG] [Job {job_id}] JSON error for {item_name} (status {status}): {je}\nResponse: {data[:200]!r}')
-                                orders_data[item_id] = []
-                    except Exception as e:
-                        print(f'[DEBUG] [Job {job_id}] Error fetching orders for {item_name}: {e}')
-                        orders_data[item_id] = []
+                    def make_thread_func(item_to_process):
+                        def thread_func():
+                            item_id, orders = fetch_item_orders(item_to_process, job_id)
+                            with results_lock:
+                                results[item_id] = orders
+                        return thread_func
+                    
+                    thread = threading.Thread(target=make_thread_func(item))
+                    threads.append(thread)
+                    thread.start()
+                
+                # Wait for all threads to complete
+                for thread in threads:
+                    thread.join()
+                
+                # Collect results from all threads
+                for item_id, orders in results.items():
+                    orders_data[item_id] = orders
+                
                 # After each batch, analyze and update job results
                 batch_opps = calc.analyze_prime_items(batch, orders_data, max_order_age=max_order_age)
                 with trading_jobs_lock:
                     trading_jobs[job_id]['results'].extend(batch_opps)
                     trading_jobs[job_id]['progress'] += len(batch)
-                print(f'[DEBUG] [Job {job_id}] Batch {batch_start//batch_size+1} complete, {trading_jobs[job_id]["progress"]}/{trading_jobs[job_id]["total"]} items processed')
+                batch_time = time.time() - batch_start_time
+                print(f'[DEBUG] [Job {job_id}] Batch {batch_start//batch_size+1} complete in {batch_time:.2f}s, {trading_jobs[job_id]["progress"]}/{trading_jobs[job_id]["total"]} items processed')
+            
             with trading_jobs_lock:
                 trading_jobs[job_id]['status'] = 'done'
             print(f'[DEBUG] [Job {job_id}] Analysis complete!')

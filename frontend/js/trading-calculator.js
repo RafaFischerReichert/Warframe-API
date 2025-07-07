@@ -382,7 +382,7 @@ function updateTable() {
             <td style="${buyCellStyle}">${opp.buyPrice}</td>
             <td>${opp.sellPrice}</td>
             <td>${orderAgeStr}</td>
-            <td>${opp.sellPrice - opp.buyPrice}</td>
+            <td>${opp.netProfit}</td>
             <td>${opp.totalInvestment}</td>
             <td>
                 <button class="action-btn bought" onclick="createWTBOrder(${JSON.stringify(opp).replace(/"/g, '&quot;')})" style="font-size: 0.8em; padding: 4px 8px;">
