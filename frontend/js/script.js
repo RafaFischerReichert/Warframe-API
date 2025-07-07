@@ -59,7 +59,7 @@ function getItemTypeFromFilter(filterValue) {
 // Load syndicate data from JSON file
 async function loadSyndicateData() {
     try {
-        const response = await fetch('../data/syndicate_items.json');
+        const response = await fetch('/data/syndicate_items.json');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -292,7 +292,10 @@ async function searchSyndicateMods() {
         // Normal syndicate matching
         for (const term of searchTerms) {
             for (const [key, data] of Object.entries(SYNDICATES)) {
-                if (data.keywords.some(keyword => term === keyword || keyword.includes(term) || term.includes(keyword))) {
+                if (data.keywords.some(keyword => {
+                    const keywordLower = keyword.toLowerCase();
+                    return term === keywordLower || keywordLower.includes(term) || term.includes(keywordLower);
+                })) {
                     matchedKeys.add(key);
                 }
             }
@@ -325,11 +328,18 @@ async function searchSyndicateMods() {
             );
         }
         // Filter by standing if input is present and valid
-        let standingValue = 0;
-        if (standingInput && standingInput.value !== '' && !isNaN(standingInput.value)) {
-            standingValue = parseInt(standingInput.value, 10);
+        if (
+            standingInput &&
+            standingInput.value !== '' &&
+            !isNaN(standingInput.value)
+        ) {
+            const standingValue = parseInt(standingInput.value, 10);
             if (!isNaN(standingValue)) {
-                itemsToAdd = itemsToAdd.filter(item => typeof item.standing_cost === 'number' && item.standing_cost <= standingValue);
+                itemsToAdd = itemsToAdd.filter(
+                    item =>
+                        typeof item.standing_cost === 'number' &&
+                        item.standing_cost <= standingValue
+                );
             }
         }
         combinedItems = combinedItems.concat(itemsToAdd.map(item => ({...item, syndicate: syndicateData.name, color: syndicateData.color})));

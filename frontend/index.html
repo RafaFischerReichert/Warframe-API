@@ -30,6 +30,11 @@
             <input type="text" id="itemFilterInput" placeholder="Filter items by type..." style="padding:8px; width:250px; border-radius:4px; border:1px solid #333; background:#222; color:#fff; margin-right:10px;">
             <button id="applyFilterBtn" style="padding:8px 16px; background:linear-gradient(45deg, #00d4ff, #ff6b6b); border:none; border-radius:4px; color:#fff; cursor:pointer; font-weight:bold;">Apply Filter</button>
         </div>
+        
+        <div class="standing-section" style="text-align:center; margin-bottom:20px;">
+            <input type="number" id="standingInput" placeholder="Maximum Standing Price" min="0" style="padding:8px; width:200px; border-radius:4px; border:1px solid #333; background:#222; color:#fff; margin-right:10px;">
+            <label for="standingInput" style="color:#b0b0b0;">Your Current Standing</label>
+        </div>
 
         <div class="time-range-section">
             <h3 style="color: #00d4ff; margin-bottom: 15px; text-align: center;">Time Range for Orders</h3>
@@ -82,11 +87,6 @@
                 </div>
                 <p class="order-mode-description" id="orderModeDescription">Showing only online player orders</p>
             </div>
-        </div>
-
-        <div class="standing-section" style="text-align:center; margin-bottom:20px;">
-            <input type="number" id="standingInput" placeholder="Your Current Standing..." min="0" style="padding:8px; width:200px; border-radius:4px; border:1px solid #333; background:#222; color:#fff; margin-right:10px;">
-            <label for="standingInput" style="color:#b0b0b0;">Your Current Standing</label>
         </div>
 
         <div id="results">
