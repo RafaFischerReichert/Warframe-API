@@ -256,261 +256,45 @@ let searchInProgress = false;
 let cancelSearch = false;
 
 async function searchSyndicateMods() {
-    if (searchInProgress) return;
-    searchInProgress = true;
-    cancelSearch = false;
-    const searchTerm = searchInput.value.trim().toLowerCase();
-    if (!searchTerm) {
-        resultsDiv.innerHTML = '<p style="color: #ff6b6b; text-align: center;">Please enter a syndicate name</p>';
-        searchInProgress = false;
+    const searchValue = searchInput.value.trim();
+    const typeFilter = getItemTypeFromFilter(searchValue);
+    const standing = standingInput.value.trim();
+    try {
+        resultsDiv.innerHTML = '<div>Searching...</div>';
+        const response = await fetch('/api/syndicate-search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                search: searchValue,
+                type_filter: typeFilter,
+                standing: standing
+            })
+        });
+        if (!response.ok) {
+            throw new Error('Failed to search syndicate mods');
+        }
+        const result = await response.json();
+        renderFilteredItems(result.results || []);
+    } catch (error) {
+        resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+    }
+}
+
+function renderFilteredItems(items) {
+    // Render the filtered items as before
+    if (!items.length) {
+        resultsDiv.innerHTML = '<div>No results found.</div>';
         return;
     }
-    // Check if syndicate data is loaded
-    if (Object.keys(SYNDICATES).length === 0) {
-        resultsDiv.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #ff6b6b;">
-                <h3>Loading Syndicate Data</h3>
-                <p>Please wait while syndicate data is being loaded...</p>
-            </div>
-        `;
-        await loadSyndicateData();
+    let html = '<ul>';
+    for (const item of items) {
+        html += `<li><strong>${item.name}</strong> (${item.type}) - Standing: ${item.standing_cost} [${item.syndicate}]</li>`;
     }
-    // Split input by comma and trim each part
-    const searchTerms = searchTerm.split(',').map(s => s.trim()).filter(Boolean);
-    // Find all matching syndicates (unique)
-    const matchedKeys = new Set();
-    
-    // Check if "all" is in the search terms
-    const isAllSyndicates = searchTerms.some(term => term.toLowerCase() === 'all');
-    
-    if (isAllSyndicates) {
-        // Include all syndicates
-        for (const [key, data] of Object.entries(SYNDICATES)) {
-            matchedKeys.add(key);
-        }
-    } else {
-        // Normal syndicate matching
-        for (const term of searchTerms) {
-            for (const [key, data] of Object.entries(SYNDICATES)) {
-                if (data.keywords.some(keyword => term === keyword || keyword.includes(term) || term.includes(keyword))) {
-                    matchedKeys.add(key);
-                }
-            }
-        }
-    }
-    const matchedSyndicates = Array.from(matchedKeys).map(key => [key, SYNDICATES[key]]);
-    if (matchedSyndicates.length === 0) {
-        resultsDiv.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #ff6b6b;">
-                <h3>Syndicate Not Found</h3>
-                <p>Available syndicates:</p>
-                <ul style="text-align: left; max-width: 400px; margin: 10px auto; color: #b0b0b0;">
-                    ${Object.values(SYNDICATES).map(s => `<li>${s.name}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-        searchInProgress = false;
-        return;
-    }
-    // Combine all items from all matched syndicates
-    let combinedItems = [];
-    let syndicateNames = [];
-    let syndicateColors = [];
-    for (const [syndicateKey, syndicateData] of matchedSyndicates) {
-        // Apply type filter at the search level
-        let itemsToAdd = syndicateData.items;
-        if (currentTypeFilter) {
-            itemsToAdd = syndicateData.items.filter(item => 
-                item.type && item.type.toLowerCase().includes(currentTypeFilter)
-            );
-        }
-        // Filter by standing if input is present and valid
-        let standingValue = 0;
-        if (standingInput && standingInput.value !== '' && !isNaN(standingInput.value)) {
-            standingValue = parseInt(standingInput.value, 10);
-            if (!isNaN(standingValue)) {
-                itemsToAdd = itemsToAdd.filter(item => typeof item.standing_cost === 'number' && item.standing_cost <= standingValue);
-            }
-        }
-        combinedItems = combinedItems.concat(itemsToAdd.map(item => ({...item, syndicate: syndicateData.name, color: syndicateData.color})));
-        syndicateNames.push(syndicateData.name);
-        syndicateColors.push(syndicateData.color);
-    }
-    // Remove duplicates by item name/type/standing_cost
-    const uniqueItems = [];
-    const seen = new Set();
-    for (const item of combinedItems) {
-        const key = item.name + '|' + item.type + '|' + item.standing_cost;
-        if (!seen.has(key)) {
-            uniqueItems.push(item);
-            seen.add(key);
-        }
-    }
-    // Build heading
-    const heading = syndicateNames.length === 1 ?
-        `${syndicateNames[0]} Items` :
-        `${syndicateNames.slice(0, -1).join(', ')} and ${syndicateNames[syndicateNames.length - 1]} Items`;
-    
-    // Add filter info to heading if filter is active
-    const filterInfo = currentTypeFilter ? ` (${currentTypeFilter} only)` : '';
-    const fullHeading = heading + filterInfo;
-    
-    // Show progress bar loading state with cancel button
-    resultsDiv.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h3 style="color: ${syndicateColors[0]};">${fullHeading}</h3>
-            <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">Time range: ${timeRangeDisplay.textContent}</p>
-            <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
-            <p style="color: ${getSelectedOrderMode() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderMode() === 'all' ? 'All Orders' : 'Online Only'}</p>
-            <div class="progress-bar-container">
-                <div id="progressBar" class="progress-bar" style="width: 0%; background: linear-gradient(90deg, ${syndicateColors[0]}, #00d4ff);"></div>
-            </div>
-            <p id="progressText" class="progress-text">0 / ${uniqueItems.length} items processed</p>
-            <p id="currentItem" class="current-item">Starting...</p>
-            <button id="cancelSearchBtn" style="margin-top:10px; background:#ff6b6b; color:#fff; border:none; border-radius:4px; padding:10px 20px; cursor:pointer;">Cancel Search</button>
-        </div>
-    `;
-    // Add cancel button event listener
-    setTimeout(() => {
-        const cancelSearchBtn = document.getElementById('cancelSearchBtn');
-        if (cancelSearchBtn) {
-            cancelSearchBtn.onclick = function() {
-                cancelSearch = true;
-                const currentItem = document.getElementById('currentItem');
-                if (currentItem) currentItem.textContent = 'Search cancelled.';
-            };
-        }
-    }, 0);
-    // Get price data for each item
-    const itemsWithPrices = [];
-    let completedItems = 0;
-    for (let i = 0; i < uniqueItems.length; i++) {
-        if (cancelSearch) {
-            searchInProgress = false;
-            return;
-        }
-        const item = uniqueItems[i];
-        try {
-            completedItems++;
-            const progressPercent = (completedItems / uniqueItems.length) * 100;
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-            const currentItem = document.getElementById('currentItem');
-            if (progressBar && progressText && currentItem) {
-                progressBar.style.width = `${progressPercent}%`;
-                progressText.textContent = `${completedItems} / ${uniqueItems.length} items processed`;
-                currentItem.textContent = `Processing: ${item.name}`;
-            }
-            // Convert item name to URL format (lowercase, replace spaces with underscores)
-            const urlName = item.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-            // Fetch price/order data for this item
-            const selectedRank = getSelectedRank();
-            const apiUrl = `${API_BASE_URL}/items/${urlName}/orders`;
-            let price = null;
-            let efficiency = null;
-            let orderCount = 0;
-            let recentOrders = [];
-            try {
-                const response = await fetch(apiUrl);
-                if (response.ok) {
-                    const data = await response.json();
-                    // Filter orders by rank, recency, and online status if needed
-                    const orders = (data.payload && data.payload.orders) ? data.payload.orders : [];
-                    const now = new Date();
-                    const orderMode = getSelectedOrderMode();
-                    recentOrders = orders.filter(order => {
-                        // Filter by rank
-                        if (order.mod_rank !== undefined && ((selectedRank === 'rank0' && order.mod_rank !== 0) || (selectedRank === 'rank3' && order.mod_rank !== 3))) {
-                            return false;
-                        }
-                        
-                        // Filter by time range
-                        const lastSeen = new Date(order.last_update || order.last_seen || 0);
-                        const isWithinTimeRange = (now - lastSeen) / (1000 * 60 * 60 * 24) <= parseInt(timeRangeSlider.value);
-                        if (!isWithinTimeRange) {
-                            return false;
-                        }
-                        
-                        // Filter by online status if "online only" is selected
-                        if (orderMode === 'online' && order.user && order.user.status !== 'ingame' && order.user.status !== 'online') {
-                            return false;
-                        }
-                        
-                        return true;
-                    });
-                    orderCount = recentOrders.length;
-                    if (orderCount > 0) {
-                        const prices = recentOrders.map(order => order.platinum);
-                        price = Math.min(...prices);
-                        efficiency = Math.round((item.standing_cost / price) * 10) / 10;
-                    }
-                }
-            } catch (err) {
-                // Ignore fetch errors for individual items
-            }
-            itemsWithPrices.push({
-                ...item,
-                price,
-                efficiency,
-                orderCount
-            });
-        } catch (err) {
-            // Handle errors for individual items
-        }
-    }
-    // After all items, display the results
-    displayCombinedResults(itemsWithPrices, fullHeading, syndicateColors[0]);
-    searchInProgress = false;
+    html += '</ul>';
+    resultsDiv.innerHTML = html;
 }
-
-function displayCombinedResults(items, heading, color) {
-    // Save for filtering
-    lastDisplayedItems = items;
-    lastHeading = heading + (getSelectedOrderMode() === 'all' ? ' (All Orders)' : ' (Online Only)');
-    lastColor = color;
-    renderFilteredItems();
-}
-
-function renderFilteredItems() {
-    // Sort items: available (with price) first, then by efficiency ascending (lowest to highest)
-    const sortedItems = [...lastDisplayedItems].sort((a, b) => {
-        if (a.price && !b.price) return -1;
-        if (!a.price && b.price) return 1;
-        if (a.efficiency != null && b.efficiency != null) return a.efficiency - b.efficiency;
-        return 0;
-    });
-    
-    // Only apply filter if button is clicked, not on every input change
-    const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h3 style="color: ${lastColor};">${lastHeading}</h3>
-            <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">Time range: ${timeRangeDisplay.textContent}</p>
-            <p style="color: ${getSelectedRank() === 'rank0' ? '#00d4ff' : '#ff6b6b'}; font-size: 0.9rem; margin-bottom: 10px;">Rank: ${getSelectedRank() === 'rank0' ? 'Rank 0' : 'Rank 3'}</p>
-            <p style="color: ${getSelectedOrderMode() === 'all' ? '#ff6b6b' : '#4ecdc4'}; font-size: 0.9rem; margin-bottom: 10px;">Orders: ${getSelectedOrderMode() === 'all' ? 'All Orders' : 'Online Only'}</p>
-        </div>
-        <div class="items-grid">
-            ${sortedItems.map(item => `
-                <div class="item-card" style="border-color: ${item.color};">
-                    <div class="item-name">${item.name}</div>
-                    <div class="item-category">${item.type}</div>
-                    <div class="price-info">
-                        ${item.price !== null ? `<span class="price-label">Min Price:</span> <span class="price-value">${item.price}p</span>` : '<span class="price-label">No Orders</span>'}
-                    </div>
-                    <div class="volume-info">
-                        ${item.orderCount ? `${item.orderCount} orders` : ''}
-                    </div>
-                    <div class="efficiency-info">
-                        ${item.efficiency ? `<span class="price-label">Efficiency:</span> <span class="price-value">${item.efficiency}</span>` : ''}
-                    </div>
-                    <div class="syndicate-label" style="color: ${item.color}; font-size: 0.85em;">${item.syndicate}</div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-
 
 // Update the applyFilter function to use keyword mapping
 function applyFilter() {

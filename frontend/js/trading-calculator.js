@@ -38,6 +38,7 @@ let isAnalyzing = false;
 let maxOrderAge = parseInt(maxOrderAgeSlider?.value) || 30;
 let rateLimitStatus = { rate_limited: false, elapsed_seconds: 0, estimated_wait: 0 };
 let rateLimitCheckInterval = null;
+let analysisAbortController = null;
 
 // Trading workflow state
 let pendingItems = [];
@@ -70,8 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Check authentication status on page load
     checkAuthStatus();
-    // Start rate limit monitoring
-    startRateLimitMonitoring();
     // Load trading workflow data
     loadTradingWorkflowData();
     updateTradingWorkflowUI();
@@ -159,10 +158,14 @@ async function analyzeAllPrimeSets() {
     analysisProgressDiv.style.display = 'block';
     tradingResultsDiv.innerHTML = '';
     
+    // Set up AbortController for cancellation
+    analysisAbortController = new AbortController();
+    const { signal } = analysisAbortController;
+    
     try {
         // Step 1: Get all items from Warframe Market
         currentItem.textContent = 'Fetching all items from market...';
-        progressText.textContent = 'Step 1/3: Getting item list';
+        progressText.textContent = 'Step 1/2: Getting item list';
         progressBar.style.width = '10%';
         
         const itemsResponse = await fetch(`${API_BASE_URL}/items`);
@@ -173,111 +176,74 @@ async function analyzeAllPrimeSets() {
         const itemsData = await itemsResponse.json();
         const allItems = itemsData.payload?.items || [];
         
-        // Step 2: Filter for ALL Prime items (not just sets)
-        currentItem.textContent = 'Filtering Prime items...';
-        progressText.textContent = 'Step 2/3: Filtering Prime items';
-        progressBar.style.width = '30%';
+        // Step 2: Start backend analysis job
+        currentItem.textContent = 'Analyzing trading opportunities...';
+        progressText.textContent = 'Step 2/2: Analyzing';
+        progressBar.style.width = '20%';
         
-        const primeItems = allItems.filter(item => {
-            const itemName = item.item_name?.toLowerCase() || '';
-            return itemName.includes('prime');
+        // Start backend job
+        const startJobResponse = await fetch('/api/trading-calc', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                all_items: allItems,
+                min_profit: minProfit,
+                max_investment: maxInvestment,
+                max_order_age: maxOrderAge,
+                batch_size: CONFIG.BATCH_SIZE,
+            }),
+            signal
         });
-        
-        console.log(`Found ${primeItems.length} Prime items to analyze`);
-        
-        // Step 3: Analyze each Prime item
-        currentItem.textContent = 'Analyzing Prime items...';
-        progressText.textContent = 'Step 3/3: Analyzing trading opportunities';
-        
-        // Process items in batches for parallel processing
-        const batchSize = CONFIG.BATCH_SIZE; // Use the configured batch size
-        for (let i = 0; i < primeItems.length; i += batchSize) {
-            if (!isAnalyzing) break; // Allow cancellation
-            
-            const batch = primeItems.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (primeItem, batchIndex) => {
-                const itemIndex = i + batchIndex;
-                const progress = 30 + (itemIndex / primeItems.length) * 70;
-                progressBar.style.width = `${progress}%`;
-                currentItem.textContent = `Analyzing: ${primeItem.item_name}`;
-                
-                try {
-                    // Get orders for this Prime item
-                    const urlName = primeItem.url_name;
-                    console.log(`[DEBUG] Processing item: ${primeItem.item_name}, _id: ${primeItem._id}, url_name: ${urlName}`);
-                    
-                    // First, get the item details to get the ObjectId
-                    let itemId = primeItem.id || primeItem._id;
-                    console.log(`[DEBUG] Initial itemId for ${primeItem.item_name}: ${itemId}`);
-                    if (!itemId) {
-                        try {
-                            const itemDetailsResponse = await fetch(`${API_BASE_URL}/items/${urlName}`);
-                            if (itemDetailsResponse.ok) {
-                                const itemDetails = await itemDetailsResponse.json();
-                                itemId = itemDetails.payload?.item?.id;
-                                console.log(`[DEBUG] Fetched item details for ${primeItem.item_name}, ObjectId: ${itemId}`);
-                            } else {
-                                console.error(`[DEBUG] Failed to fetch item details for ${primeItem.item_name}, status: ${itemDetailsResponse.status}`);
-                            }
-                        } catch (error) {
-                            console.error(`[DEBUG] Failed to fetch item details for ${primeItem.item_name}:`, error);
-                        }
-                    }
-                    console.log(`[DEBUG] Final itemId for ${primeItem.item_name}: ${itemId}`);
-                    
-                    const ordersResponse = await fetch(`${API_BASE_URL}/items/${urlName}/orders`);
-                    if (ordersResponse.ok) {
-                        const ordersData = await ordersResponse.json();
-                        const orders = ordersData.payload?.orders || [];
-                        if (orders.length > 0) {
-                            const opportunities = analyzePrimeItemOrders(orders, primeItem.item_name, itemId, minProfit, maxInvestment);
-                            if (opportunities.length > 0) {
-                                console.log(`[DEBUG] Created opportunities for ${primeItem.item_name} with itemId: ${itemId}`);
-                                console.log(`[DEBUG] First opportunity:`, opportunities[0]);
-                                return opportunities;
-                            }
-                        }
-                    }
-                    primeSetsAnalyzed++;
-                } catch (error) {
-                    console.error(`Error analyzing ${primeItem.item_name}:`, error);
-                }
-                // Small delay between individual items
-                await new Promise(resolve => setTimeout(resolve, CONFIG.ITEM_DELAY));
-                return [];
-            });
-            
-            // Wait for all items in the batch to complete
-            const batchResults = await Promise.all(batchPromises);
-            
-            // Add all opportunities from this batch
-            for (const opportunities of batchResults) {
-                if (opportunities.length > 0) {
-                    allOpportunities = allOpportunities.concat(opportunities);
-                    allOpportunities.sort((a, b) => b.netProfit - a.netProfit);
-                    allOpportunities = allOpportunities.slice(0, CONFIG.MAX_OPPORTUNITIES);
-                    updateTable();
-                }
-            }
-            
-            // Small delay between batches to avoid overwhelming the server
-            await new Promise(resolve => setTimeout(resolve, CONFIG.BATCH_DELAY));
+        if (!startJobResponse.ok) {
+            throw new Error('Failed to start backend analysis job');
         }
-        currentItem.textContent = 'Analysis complete!';
-        progressText.textContent = `Analyzed ${primeSetsAnalyzed} Prime items, found ${allOpportunities.length} opportunities`;
-        progressBar.style.width = '100%';
-        setTimeout(() => {
-            analysisProgressDiv.style.display = 'none';
-        }, 3000);
+        const { job_id } = await startJobResponse.json();
+        if (!job_id) throw new Error('No job_id returned from backend');
+
+        // Poll for progress/results
+        let lastResultsLength = 0;
+        let polling = true;
+        async function pollJob() {
+            if (!polling) return;
+            const pollResponse = await fetch(`/api/trading-calc-progress?job_id=${encodeURIComponent(job_id)}`);
+            if (!pollResponse.ok) {
+                throw new Error('Failed to poll backend job');
+            }
+            const pollData = await pollResponse.json();
+            console.log('POLL DATA:', pollData); // Debug log
+            // Update progress bar and text
+            const { status, progress, total, results, cancelled } = pollData;
+            primeSetsAnalyzed = progress;
+            progressBar.style.width = `${Math.floor((progress/total)*100)}%`;
+            progressText.textContent = `Analyzed ${progress} / ${total} items`;
+            currentItem.textContent = status === 'done' ? 'Analysis complete!' : `Analyzing... (${progress}/${total})`;
+            // Only add new results
+            if (results && results.length > lastResultsLength) {
+                allOpportunities = results;
+                updateTable();
+                lastResultsLength = results.length;
+            }
+            if (status === 'done' || cancelled) {
+                isAnalyzing = false;
+                analyzePrimeSetsBtn.disabled = false;
+                analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
+                analysisProgressDiv.style.display = 'none';
+                polling = false;
+                return;
+            }
+            if (isAnalyzing) {
+                setTimeout(pollJob, 1000);
+            }
+        }
+        pollJob();
     } catch (error) {
-        console.error('Error during analysis:', error);
-        currentItem.textContent = `Error: ${error.message}`;
-        progressText.textContent = 'Analysis failed';
-        showMessage(`Analysis failed: ${error.message}`, 'error');
-    } finally {
         isAnalyzing = false;
         analyzePrimeSetsBtn.disabled = false;
         analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
+        analysisProgressDiv.style.display = 'none';
+        showMessage(error.message || 'Analysis failed', 'error');
     }
 }
 
@@ -384,7 +350,7 @@ function updateTable() {
     if (allOpportunities.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" class="empty-table">
+                <td colspan="7" class="empty-table">
                     <h3>No Trading Opportunities Yet</h3>
                     <p>Click "Analyze All Prime Items" to find profitable trading opportunities.</p>
                 </td>
@@ -398,7 +364,6 @@ function updateTable() {
         row.style.cursor = 'pointer';
         row.addEventListener('click', () => selectRow(row));
         
-        const roiClass = getROIClass(opp.roi);
         // Calculate age of the highest WTB order for this set
         const now = new Date();
         const lastSeen = new Date(opp._wtbOrder.last_update || opp._wtbOrder.last_seen || 0);
@@ -413,14 +378,11 @@ function updateTable() {
         
         row.innerHTML = `
             <td>${index + 1}</td>
-            <td>${opp.itemName || opp.primeSetName}</td>
+            <td>${opp.itemName}</td>
             <td style="${buyCellStyle}">${opp.buyPrice}</td>
             <td>${opp.sellPrice}</td>
             <td>${orderAgeStr}</td>
-            <td>${opp.taxAmount}</td>
-            <td>${opp.netProfit}</td>
-            <td class="${roiClass}">${opp.roi.toFixed(1)}%</td>
-            <td>${opp.quantity}</td>
+            <td>${opp.sellPrice - opp.buyPrice}</td>
             <td>${opp.totalInvestment}</td>
             <td>
                 <button class="action-btn bought" onclick="createWTBOrder(${JSON.stringify(opp).replace(/"/g, '&quot;')})" style="font-size: 0.8em; padding: 4px 8px;">
@@ -446,9 +408,7 @@ function updateTable() {
     // Calculate and display summary stats if we have opportunities
     if (allOpportunities.length > 0) {
         const totalProfit = allOpportunities.reduce((sum, opp) => sum + opp.netProfit, 0);
-        const averageROI = (allOpportunities.reduce((sum, opp) => sum + opp.roi, 0) / allOpportunities.length).toFixed(1);
-        
-        console.log(`Found ${allOpportunities.length} opportunities with total profit: ${totalProfit}, average ROI: ${averageROI}%`);
+        console.log(`Found ${allOpportunities.length} opportunities with total profit: ${totalProfit}`);
     }
 }
 
@@ -512,21 +472,17 @@ function showMessage(message, type) {
     }, 5000);
 }
 
-function stopAnalysis() {
+async function stopAnalysis() {
     isAnalyzing = false;
-    currentItem.textContent = 'Analysis stopped by user';
-    progressText.textContent = `Analysis stopped. Analyzed ${primeSetsAnalyzed} Prime items, found ${allOpportunities.length} opportunities`;
-    
-    // Re-enable the analyze button
+    if (analysisAbortController) {
+        analysisAbortController.abort();
+    }
+    try {
+        await fetch('/api/cancel-analysis', { method: 'POST' });
+    } catch (e) {}
     analyzePrimeSetsBtn.disabled = false;
     analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
-    
-    // Hide progress after 3 seconds
-    setTimeout(() => {
-        analysisProgressDiv.style.display = 'none';
-    }, 3000);
-    
-    showMessage('Analysis stopped by user', 'warning');
+    analysisProgressDiv.style.display = 'none';
 }
 
 function selectRow(clickedRow) {
@@ -539,99 +495,6 @@ function selectRow(clickedRow) {
     // Add selection to clicked row
     clickedRow.classList.add('selected');
     clickedRow.style.background = 'rgba(0, 212, 255, 0.2)';
-}
-
-// Rate limit monitoring
-async function checkRateLimitStatus() {
-    try {
-        const response = await fetch('/rate-limit-status', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            console.log('[RATE LIMIT] Status check result:', result);
-            rateLimitStatus = result;
-            updateRateLimitDisplay();
-        }
-    } catch (error) {
-        console.error('Rate limit status check error:', error);
-    }
-}
-
-function startRateLimitMonitoring() {
-    console.log('[RATE LIMIT] Starting rate limit monitoring');
-    // Check rate limit status every 2 seconds
-    rateLimitCheckInterval = setInterval(checkRateLimitStatus, 2000);
-    // Initial check
-    checkRateLimitStatus();
-}
-
-function stopRateLimitMonitoring() {
-    if (rateLimitCheckInterval) {
-        clearInterval(rateLimitCheckInterval);
-        rateLimitCheckInterval = null;
-    }
-}
-
-function updateRateLimitDisplay() {
-    console.log('[RATE LIMIT] Updating display, status:', rateLimitStatus);
-    
-    // Remove existing rate limit indicator if present
-    const existingIndicator = document.getElementById('rate-limit-indicator');
-    if (existingIndicator) {
-        existingIndicator.remove();
-    }
-    
-    if (rateLimitStatus.rate_limited) {
-        console.log('[RATE LIMIT] Creating rate limit indicator');
-        // Create rate limit indicator
-        const rateLimitIndicator = document.createElement('div');
-        rateLimitIndicator.id = 'rate-limit-indicator';
-        rateLimitIndicator.style.cssText = `
-            position: fixed;
-            top: 60px;
-            right: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 0.9em;
-            font-weight: bold;
-            z-index: 1000;
-            background: rgba(255, 165, 0, 0.9);
-            border: 2px solid #ff6600;
-            color: #fff;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
-            animation: pulse 2s infinite;
-        `;
-        
-        const waitTime = Math.ceil(rateLimitStatus.estimated_wait);
-        rateLimitIndicator.innerHTML = `
-            <div style="font-size: 1.1em; margin-bottom: 5px;">⚠️ Rate Limited</div>
-            <div style="font-size: 0.8em;">Wait: ${waitTime}s</div>
-            <div style="font-size: 0.7em; margin-top: 5px;">API requests paused</div>
-        `;
-        
-        document.body.appendChild(rateLimitIndicator);
-        
-        // Disable analyze button if rate limited
-        if (analyzePrimeSetsBtn) {
-            analyzePrimeSetsBtn.disabled = true;
-            analyzePrimeSetsBtn.textContent = 'Rate Limited - Please Wait';
-            analyzePrimeSetsBtn.style.background = 'rgba(255, 165, 0, 0.7)';
-        }
-    } else {
-        console.log('[RATE LIMIT] Clearing rate limit indicator');
-        // Re-enable analyze button if not rate limited
-        if (analyzePrimeSetsBtn && !isAnalyzing) {
-            analyzePrimeSetsBtn.disabled = false;
-            analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
-            analyzePrimeSetsBtn.style.background = '';
-        }
-    }
 }
 
 // Trading Workflow Functions

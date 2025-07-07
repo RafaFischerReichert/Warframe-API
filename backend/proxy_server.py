@@ -14,6 +14,9 @@ import base64
 import urllib.error
 import http.cookiejar
 from auth_handler import handle_login_request, handle_logout_request, get_auth_status, get_auth_headers, get_session_cookies
+import glob
+from urllib.error import HTTPError
+import uuid
 
 # ===== CONFIGURATION =====
 REQUESTS_PER_SECOND = 5  # Change from 3 to 5
@@ -31,23 +34,12 @@ request_timestamps = []  # stores timestamps of last requests
 RATE_LIMIT = REQUESTS_PER_SECOND  # max requests
 RATE_PERIOD = 1.0  # per second
 
-def get_rate_limit_status():
-    """Get current rate limiting status"""
-    global rate_limit_detected, rate_limit_start_time
-    with rate_limit_lock:
-        if rate_limit_detected:
-            elapsed = time.time() - rate_limit_start_time
-            return {
-                "rate_limited": True,
-                "elapsed_seconds": elapsed,
-                "estimated_wait": max(0, 60 - elapsed)  # Assume 60 second cooldown
-            }
-        else:
-            return {
-                "rate_limited": False,
-                "elapsed_seconds": 0,
-                "estimated_wait": 0
-            }
+# Global cancellation flag for trading analysis
+trading_analysis_cancelled = False
+
+# In-memory job store for batch processing
+trading_jobs = {}
+trading_jobs_lock = threading.Lock()
 
 def set_rate_limited():
     """Mark that we've been rate limited"""
@@ -69,14 +61,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         print(f"Received GET request for path: {self.path}")
         
+        # Handle trading analysis progress polling endpoint FIRST
+        if self.path.startswith('/api/trading-calc-progress'):
+            self.handle_trading_calc_progress()
+            return
+        
         # Handle authentication endpoints
         if self.path == '/auth/status':
             self.handle_auth_status_endpoint()
-            return
-        
-        # Handle rate limit status endpoint
-        if self.path == '/rate-limit-status':
-            self.handle_rate_limit_status_endpoint()
             return
         
         # Handle trading workflow endpoints (POST only)
@@ -267,6 +259,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.handle_delete_order_endpoint(post_data)
             return
         
+        # Trading calculator endpoint
+        elif self.path == '/api/trading-calc':
+            self.handle_trading_calc_endpoint(post_data)
+            return
+        # Trading analysis cancel endpoint
+        elif self.path == '/api/cancel-analysis':
+            self.handle_cancel_analysis_endpoint(post_data)
+            return
+        
         if self.path.startswith('/api/'):
             # Proxy POST requests to Warframe Market API
             api_path = self.path[5:]  # Remove '/api/' prefix
@@ -450,25 +451,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
         """Handle authentication status requests"""
         try:
             result = get_auth_status()
-            
-            self.send_response(200)
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps(result).encode())
-            
-        except Exception as e:
-            self.send_response(500)
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
-            self.wfile.write(error_response.encode())
-
-    def handle_rate_limit_status_endpoint(self):
-        """Handle rate limit status requests"""
-        try:
-            result = get_rate_limit_status()
             
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -698,6 +680,139 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
             self.wfile.write(error_response.encode())
+
+    def handle_trading_calc_endpoint(self, post_data):
+        global trading_analysis_cancelled
+        trading_analysis_cancelled = False  # Ensure reset at the very start
+        print('[DEBUG] trading_analysis_cancelled reset to False at start of analysis')
+        from trading_calculator import TradingCalculator
+        data = json.loads(post_data.decode('utf-8'))
+        all_items = data.get('all_items', [])
+        min_profit = data.get('min_profit', 10)
+        max_investment = data.get('max_investment', 0)
+        max_order_age = data.get('max_order_age', 30)
+        batch_size = data.get('batch_size', 3)
+        calc = TradingCalculator(min_profit, max_investment, max_order_age)
+        prime_items = [item for item in all_items if 'prime' in (item.get('item_name') or '').lower()]
+        print(f'[DEBUG] Found {len(prime_items)} Prime items from API. Sample: {[item.get("item_name") for item in prime_items[:5]]}')
+        # Assign a unique job ID
+        job_id = str(uuid.uuid4())
+        with trading_jobs_lock:
+            trading_jobs[job_id] = {
+                'status': 'running',
+                'progress': 0,
+                'total': len(prime_items),
+                'results': [],
+                'cancelled': False,
+            }
+        # Start batch processing in a background thread
+        def batch_worker():
+            orders_data = {}
+            for batch_start in range(0, len(prime_items), batch_size):
+                if trading_jobs[job_id]['cancelled']:
+                    print(f'[DEBUG] Job {job_id} cancelled during batch processing')
+                    trading_jobs[job_id]['status'] = 'cancelled'
+                    return
+                batch = prime_items[batch_start:batch_start+batch_size]
+                for item in batch:
+                    item_name = str(item.get('item_name') or '')
+                    item_id = str(item.get('id') or '')
+                    url_name = str(item.get('url_name') or '')
+                    print(f'[DEBUG] [Job {job_id}] Processing: {item_name} (ID: {item_id}, URL: {url_name})')
+                    if not url_name:
+                        print(f'[DEBUG] [Job {job_id}] Skipping {item_name}: no url_name')
+                        continue
+                    api_url = f'https://api.warframe.market/v1/items/{url_name}/orders?include=item'
+                    try:
+                        context = ssl.create_default_context()
+                        context.check_hostname = False
+                        context.verify_mode = ssl.CERT_NONE
+                        req = urllib.request.Request(api_url)
+                        req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+                        req.add_header('Platform', 'pc')
+                        req.add_header('accept', 'application/json')
+                        with urllib.request.urlopen(req, context=context) as response:
+                            status = response.status
+                            data = response.read()
+                            try:
+                                orders_json = json.loads(data.decode('utf-8'))
+                                all_orders = orders_json.get('payload', {}).get('orders', [])
+                                ingame_orders = [o for o in all_orders if o.get('user', {}).get('status') == 'ingame']
+                                print(f'[DEBUG] [Job {job_id}] {item_name}: {len(all_orders)} total orders, {len(ingame_orders)} ingame orders')
+                                orders_data[item_id] = ingame_orders
+                            except Exception as je:
+                                print(f'[DEBUG] [Job {job_id}] JSON error for {item_name} (status {status}): {je}\nResponse: {data[:200]!r}')
+                                orders_data[item_id] = []
+                    except Exception as e:
+                        print(f'[DEBUG] [Job {job_id}] Error fetching orders for {item_name}: {e}')
+                        orders_data[item_id] = []
+                # After each batch, analyze and update job results
+                batch_opps = calc.analyze_prime_items(batch, orders_data, max_order_age=max_order_age)
+                with trading_jobs_lock:
+                    trading_jobs[job_id]['results'].extend(batch_opps)
+                    trading_jobs[job_id]['progress'] += len(batch)
+                print(f'[DEBUG] [Job {job_id}] Batch {batch_start//batch_size+1} complete, {trading_jobs[job_id]["progress"]}/{trading_jobs[job_id]["total"]} items processed')
+            with trading_jobs_lock:
+                trading_jobs[job_id]['status'] = 'done'
+            print(f'[DEBUG] [Job {job_id}] Analysis complete!')
+        threading.Thread(target=batch_worker, daemon=True).start()
+        # Respond with job ID
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({'job_id': job_id}).encode())
+
+    def handle_trading_calc_progress(self):
+        # Parse job_id from query string
+        from urllib.parse import urlparse, parse_qs
+        query = urlparse(self.path).query
+        params = parse_qs(query)
+        job_id = params.get('job_id', [None])[0]
+        if not job_id:
+            self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'Missing job_id'}).encode())
+            return
+        with trading_jobs_lock:
+            job = trading_jobs.get(job_id)
+            if not job:
+                self.send_response(404)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Job not found'}).encode())
+                return
+            # Debug log for progress
+            print(f'[DEBUG] POLL job_id={job_id} progress={job["progress"]}/{job["total"]} results={len(job["results"])} status={job["status"]}')
+            # Return current progress and results so far
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'status': job['status'],
+                'progress': job['progress'],
+                'total': job['total'],
+                'results': job['results'],
+                'cancelled': job['cancelled'],
+            }).encode())
+
+    def handle_cancel_analysis_endpoint(self, post_data):
+        global trading_analysis_cancelled
+        trading_analysis_cancelled = True
+        print('[DEBUG] trading_analysis_cancelled set to True by cancel endpoint')
+        # Also cancel all running jobs
+        with trading_jobs_lock:
+            for job in trading_jobs.values():
+                job['cancelled'] = True
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({'success': True, 'message': 'Analysis cancelled.'}).encode())
 
     def do_OPTIONS(self):
         # Handle CORS preflight requests
