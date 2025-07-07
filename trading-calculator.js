@@ -207,14 +207,14 @@ async function analyzeAllPrimeSets() {
                     console.log(`[DEBUG] Processing item: ${primeItem.item_name}, _id: ${primeItem._id}, url_name: ${urlName}`);
                     
                     // First, get the item details to get the ObjectId
-                    let itemId = primeItem._id;
+                    let itemId = primeItem.id || primeItem._id;
                     console.log(`[DEBUG] Initial itemId for ${primeItem.item_name}: ${itemId}`);
                     if (!itemId) {
                         try {
                             const itemDetailsResponse = await fetch(`${API_BASE_URL}/items/${urlName}`);
                             if (itemDetailsResponse.ok) {
                                 const itemDetails = await itemDetailsResponse.json();
-                                itemId = itemDetails.payload?.item?._id;
+                                itemId = itemDetails.payload?.item?.id;
                                 console.log(`[DEBUG] Fetched item details for ${primeItem.item_name}, ObjectId: ${itemId}`);
                             } else {
                                 console.error(`[DEBUG] Failed to fetch item details for ${primeItem.item_name}, status: ${itemDetailsResponse.status}`);
@@ -756,8 +756,28 @@ function createBoughtItemCard(item) {
 async function createWTBOrder(opportunity) {
     try {
         console.log(`[DEBUG] Creating WTB order for opportunity:`, opportunity);
+        
+        // Get the proper ObjectId for this item
+        let itemId = opportunity.itemId;
+        if (!itemId || itemId === opportunity.itemName) {
+            console.log(`[DEBUG] Need to fetch ObjectId for: ${opportunity.itemName}`);
+            try {
+                const urlName = opportunity.itemName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                const itemDetailsResponse = await fetch(`${API_BASE_URL}/items/${urlName}`);
+                if (itemDetailsResponse.ok) {
+                    const itemDetails = await itemDetailsResponse.json();
+                    itemId = itemDetails.payload?.item?.id;
+                    console.log(`[DEBUG] Fetched ObjectId for ${opportunity.itemName}: ${itemId}`);
+                } else {
+                    console.error(`[DEBUG] Failed to fetch item details for ${opportunity.itemName}, status: ${itemDetailsResponse.status}`);
+                }
+            } catch (error) {
+                console.error(`[DEBUG] Error fetching ObjectId for ${opportunity.itemName}:`, error);
+            }
+        }
+        
         const requestBody = {
-            item_id: opportunity.itemId || opportunity.itemName, // Use itemId if available, fallback to itemName
+            item_id: itemId,
             price: opportunity.buyPrice,
             quantity: opportunity.quantity
         };
@@ -802,13 +822,32 @@ async function createWTBOrder(opportunity) {
 
 async function createWTSOrder(item) {
     try {
+        // Get the proper ObjectId for this item
+        let itemId = item.itemId;
+        if (!itemId || itemId === item.itemName) {
+            console.log(`[DEBUG] Need to fetch ObjectId for WTS: ${item.itemName}`);
+            try {
+                const urlName = item.itemName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                const itemDetailsResponse = await fetch(`${API_BASE_URL}/items/${urlName}`);
+                if (itemDetailsResponse.ok) {
+                    const itemDetails = await itemDetailsResponse.json();
+                    itemId = itemDetails.payload?.item?.id;
+                    console.log(`[DEBUG] Fetched ObjectId for WTS ${item.itemName}: ${itemId}`);
+                } else {
+                    console.error(`[DEBUG] Failed to fetch item details for WTS ${item.itemName}, status: ${itemDetailsResponse.status}`);
+                }
+            } catch (error) {
+                console.error(`[DEBUG] Error fetching ObjectId for WTS ${item.itemName}:`, error);
+            }
+        }
+        
         const response = await fetch('/trading/create-wts', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                item_id: item.itemId || item.itemName, // Use itemId if available, fallback to itemName
+                item_id: itemId,
                 price: item.sellPrice,
                 quantity: item.quantity
             })

@@ -340,6 +340,22 @@ class ProxyHandler(BaseHTTPRequestHandler):
                         # Clear rate limiting if we get a successful response
                         clear_rate_limited()
                     
+                    # Transform the response for order creation endpoints
+                    if '/profile/orders' in api_url and response.status == 200:
+                        try:
+                            api_response = json.loads(data.decode('utf-8'))
+                            # Transform to frontend-expected format
+                            transformed_response = {
+                                'success': True,
+                                'order_id': api_response.get('payload', {}).get('order', {}).get('id'),
+                                'message': 'Order created successfully'
+                            }
+                            data = json.dumps(transformed_response).encode()
+                            content_type = 'application/json'
+                            print(f"[DEBUG] Transformed response: {transformed_response}")
+                        except Exception as e:
+                            print(f"[DEBUG] Failed to transform response: {e}")
+                    
                     self.send_response(response.status)
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -578,6 +594,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         """Handle deleting orders"""
         try:
             data = json.loads(post_data.decode('utf-8'))
+            print(f"[DEBUG] Received delete order data: {data}")
             order_id = data.get('order_id', '')
             
             if not order_id:
@@ -602,6 +619,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             
             # Delete order via Warframe Market API
             api_url = f'https://api.warframe.market/v1/profile/orders/{order_id}'
+            print(f"[DEBUG] Deleting order at URL: {api_url}")
             
             # Use DELETE method
             context = ssl.create_default_context()
@@ -611,15 +629,43 @@ class ProxyHandler(BaseHTTPRequestHandler):
             req = urllib.request.Request(api_url, method='DELETE')
             req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
             
+            # Debug: print outgoing request details
+            print(f"[DEBUG] DELETE request headers:")
+            for header, value in req.header_items():
+                print(f"    {header}: {value}")
+            
             # Add auth headers
             auth_headers = get_auth_headers()
+            jwt_token = None
             if auth_headers:
                 for key, value in auth_headers.items():
                     req.add_header(key, value)
+                    if key.lower() == 'authorization' and value.lower().startswith('bearer '):
+                        jwt_token = value[7:]
+                # Also add JWT as a cookie if available
+                if jwt_token:
+                    req.add_header('Cookie', f'JWT={jwt_token}')
+                    print(f"[DEBUG] Added Cookie header for delete: JWT={jwt_token}")
+            else:
+                print("[DEBUG] No auth headers available for DELETE request.")
             
             with urllib.request.urlopen(req, context=context) as response:
                 data = response.read()
                 content_type = response.headers.get('Content-Type', 'application/json')
+                
+                # Transform the response for delete endpoints
+                if response.status == 200:
+                    try:
+                        # For successful deletes, return frontend-expected format
+                        transformed_response = {
+                            'success': True,
+                            'message': 'Order deleted successfully'
+                        }
+                        data = json.dumps(transformed_response).encode()
+                        content_type = 'application/json'
+                        print(f"[DEBUG] Delete response transformed: {transformed_response}")
+                    except Exception as e:
+                        print(f"[DEBUG] Failed to transform delete response: {e}")
                 
                 self.send_response(response.status)
                 self.send_header('Access-Control-Allow-Origin', '*')
