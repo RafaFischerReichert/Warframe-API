@@ -39,6 +39,7 @@ let maxOrderAge = parseInt(maxOrderAgeSlider?.value) || 30;
 let rateLimitStatus = { rate_limited: false, elapsed_seconds: 0, estimated_wait: 0 };
 let rateLimitCheckInterval = null;
 let analysisAbortController = null;
+let myWTBOrders = [];
 
 // Trading workflow state
 let pendingItems = [];
@@ -75,6 +76,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load trading workflow data
     loadTradingWorkflowData();
     updateTradingWorkflowUI();
+    const refreshWTBOrdersBtn = document.getElementById('refreshWTBOrdersBtn');
+    if (refreshWTBOrdersBtn) {
+        refreshWTBOrdersBtn.addEventListener('click', async function() {
+            await fetchMyWTBOrders();
+            showMessage('WTB orders refreshed!', 'success');
+        });
+    }
 });
 
 // Authentication status checking
@@ -91,8 +99,86 @@ async function checkAuthStatus() {
         
         // Add auth status indicator to the page
         addAuthStatusIndicator(result);
+
+        // If logged in, fetch user's WTB orders
+        if (result.logged_in) {
+            await fetchMyWTBOrders();
+        } else {
+            myWTBOrders = [];
+        }
+        const refreshWTBOrdersBtn = document.getElementById('refreshWTBOrdersBtn');
+        if (refreshWTBOrdersBtn) {
+            refreshWTBOrdersBtn.disabled = !result.logged_in;
+        }
     } catch (error) {
         console.error('Auth status check error:', error);
+    }
+}
+
+async function fetchMyWTBOrders() {
+    try {
+        const response = await fetch('/trading/my-wtb-orders');
+        const data = await response.json();
+        if (data.success && Array.isArray(data.orders)) {
+            // For each WTB order, fetch the best WTS price using the same logic as analyzePrimeItemOrders
+            const pendingPromises = data.orders.map(async order => {
+                const urlName = order.item?.url_name || order.item?.en?.item_name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || order.item_id;
+                let sellPrice = '-';
+                let netProfit = '-';
+                let expectedProfit = '-';
+                let bestWTS = null;
+                let quantity = order.quantity || 1;
+                if (urlName) {
+                    try {
+                        const itemOrdersResp = await fetch(`/api/items/${urlName}/orders`);
+                        if (itemOrdersResp.ok) {
+                            const itemOrdersData = await itemOrdersResp.json();
+                            const allOrders = itemOrdersData.payload?.orders || [];
+                            // Only consider ingame, visible sell orders with quantity > 0
+                            const ingameWTS = allOrders.filter(o => o.order_type === 'sell' && o.user?.status === 'ingame' && o.visible && o.quantity > 0);
+                            if (ingameWTS.length > 0) {
+                                bestWTS = ingameWTS.reduce((min, o) => o.platinum < min.platinum ? o : min, ingameWTS[0]);
+                                sellPrice = bestWTS.platinum;
+                                // Use the minimum of available quantities
+                                quantity = Math.min(quantity, bestWTS.quantity);
+                                if (typeof sellPrice === 'number' && typeof order.platinum === 'number') {
+                                    netProfit = sellPrice - order.platinum;
+                                    expectedProfit = netProfit * quantity;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore errors, leave sellPrice as '-'
+                    }
+                }
+                return {
+                    id: order.id,
+                    itemName: order.item?.en?.item_name || order.item?.item_name || order.item_id || order.item?.url_name || 'Unknown',
+                    itemId: order.item_id || order.item?.id || order.item?.url_name || order.id,
+                    buyPrice: order.platinum,
+                    sellPrice,
+                    netProfit,
+                    expectedProfit,
+                    totalInvestment: order.platinum * quantity,
+                    quantity,
+                    _wtbOrder: order,
+                    isMyWTB: true,
+                    orderId: order.id
+                };
+            });
+            pendingItems = await Promise.all(pendingPromises);
+            saveTradingWorkflowData();
+            updateTradingWorkflowUI();
+        } else {
+            pendingItems = [];
+            saveTradingWorkflowData();
+            updateTradingWorkflowUI();
+        }
+    } catch (error) {
+        console.error('Error fetching my WTB orders:', error);
+        pendingItems = [];
+        saveTradingWorkflowData();
+        updateTradingWorkflowUI();
     }
 }
 
@@ -345,9 +431,8 @@ function updateTable() {
         console.error('Table body not found');
         return;
     }
-    
     tbody.innerHTML = '';
-    
+    // Only show trading opportunities (not myWTBOrders)
     if (allOpportunities.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -359,61 +444,52 @@ function updateTable() {
         `;
         return;
     }
-    // Sort by netProfit descending and take top CONFIG.MAX_OPPORTUNITIES
-    const sortedOpportunities = [...allOpportunities]
-        .sort((a, b) => b.netProfit - a.netProfit)
-        .slice(0, CONFIG.MAX_OPPORTUNITIES);
-    
-    sortedOpportunities.forEach((opp, index) => {
+    // Sort by netProfit descending
+    const sorted = [...allOpportunities].sort((a, b) => {
+        if (a.netProfit === '-' || b.netProfit === '-') return 0;
+        return b.netProfit - a.netProfit;
+    });
+    sorted.slice(0, CONFIG.MAX_OPPORTUNITIES).forEach((opp, index) => {
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
         row.addEventListener('click', () => selectRow(row));
-        
         // Calculate age of the highest WTB order for this set
         const now = new Date();
-        const lastSeen = new Date(opp._wtbOrder.last_update || opp._wtbOrder.last_seen || 0);
+        const lastSeen = new Date(opp._wtbOrder?.last_update || opp._wtbOrder?.last_seen || 0);
         const daysSinceUpdate = ((now - lastSeen) / (1000 * 60 * 60 * 24));
         const orderAgeStr = isFinite(daysSinceUpdate) ? daysSinceUpdate.toFixed(1) : '?';
-        
         let buyCellStyle = '';
         if (opp._wtbOrder) {
             const color = getAgeColor(daysSinceUpdate);
             buyCellStyle = `background: ${color}; color: #222; font-weight: bold;`;
         }
-        
         row.innerHTML = `
             <td>${index + 1}</td>
             <td>${opp.itemName}</td>
             <td style="${buyCellStyle}">${opp.buyPrice}</td>
-            <td>${opp.sellPrice}</td>
+            <td>${opp.sellPrice ?? '-'}</td>
             <td>${orderAgeStr}</td>
-            <td>${opp.netProfit}</td>
-            <td>${opp.totalInvestment}</td>
+            <td>${opp.netProfit ?? '-'}</td>
+            <td>${opp.totalInvestment ?? '-'}</td>
             <td>
-                <button class="action-btn bought" onclick="createWTBOrder(${JSON.stringify(opp).replace(/"/g, '&quot;')})" style="font-size: 0.8em; padding: 4px 8px;">
-                    Create WTB
-                </button>
+                <button class="action-btn bought" onclick="createWTBOrder(${JSON.stringify(opp).replace(/"/g, '&quot;')})" style="font-size: 0.8em; padding: 4px 8px;">Create WTB</button>
             </td>
         `;
-        
         tbody.appendChild(row);
     });
-    
     // Update counters - only update elements that exist
     const totalOpportunitiesElement = document.getElementById('totalOpportunities');
     if (totalOpportunitiesElement) {
-        totalOpportunitiesElement.textContent = allOpportunities.length;
+        totalOpportunitiesElement.textContent = sorted.length;
     }
-    
     const primeSetsAnalyzedElement = document.getElementById('primeSetsAnalyzed');
     if (primeSetsAnalyzedElement) {
         primeSetsAnalyzedElement.textContent = `Prime items analyzed: ${primeSetsAnalyzed}`;
     }
-    
     // Calculate and display summary stats if we have opportunities
-    if (allOpportunities.length > 0) {
-        const totalProfit = allOpportunities.reduce((sum, opp) => sum + opp.netProfit, 0);
-        console.log(`Found ${allOpportunities.length} opportunities with total profit: ${totalProfit}`);
+    if (sorted.length > 0) {
+        const totalProfit = sorted.reduce((sum, opp) => sum + (opp.netProfit && opp.netProfit !== '-' ? opp.netProfit : 0), 0);
+        console.log(`Found ${sorted.length} opportunities with total profit: ${totalProfit}`);
     }
 }
 
@@ -841,6 +917,8 @@ async function deleteOrder(orderId) {
         
         if (result.success) {
             showMessage('Order deleted successfully', 'success');
+            // Refresh myWTBOrders after deletion
+            await fetchMyWTBOrders();
         } else {
             showMessage(`Failed to delete order: ${result.message}`, 'error');
         }

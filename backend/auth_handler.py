@@ -21,6 +21,7 @@ class WarframeMarketAuth:
         self.auth_lock = threading.Lock()
         self.last_login_time = 0
         self.login_valid_duration = 3600  # 1 hour in seconds
+        self.username = None  # Store the username for profile endpoints
         
     def login(self, email: str, password: str) -> Dict[str, Any]:
         """
@@ -135,11 +136,15 @@ class WarframeMarketAuth:
                 if response.status == 200 and jwt_token:
                     self.csrf_token = jwt_token  # Store JWT as our auth token
                     self.last_login_time = time.time()
-                    print(f"[DEBUG] Login successful, JWT token: {jwt_token}")
+                    # Store username from response
+                    user_info = response_json.get('payload', {}).get('user', {})
+                    self.username = user_info.get('ingame_name') or user_info.get('slug')
+                    print(f"[DEBUG] Login successful, JWT token: {jwt_token}, username: {self.username}")
                     return {
                         "success": True,
                         "message": "Login successful",
-                        "csrf_token": jwt_token
+                        "csrf_token": jwt_token,
+                        "username": self.username
                     }
                 elif response.status == 200:
                     print("[DEBUG] No JWT token found in response cookies")
@@ -208,6 +213,7 @@ class WarframeMarketAuth:
             self.csrf_token = None
             self.session_cookies = None
             self.last_login_time = 0
+            self.username = None
     
     def get_auth_headers(self) -> Optional[Dict[str, str]]:
         """Get authentication headers for API requests"""
@@ -233,7 +239,8 @@ class WarframeMarketAuth:
                 "logged_in": self.is_logged_in(),
                 "has_csrf_token": self.csrf_token is not None,
                 "login_time": self.last_login_time,
-                "session_age": time.time() - self.last_login_time if self.last_login_time > 0 else 0
+                "session_age": time.time() - self.last_login_time if self.last_login_time > 0 else 0,
+                "username": self.username
             }
 
 # Global auth instance

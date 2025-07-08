@@ -4,19 +4,16 @@ Simple proxy server to handle CORS for Warframe Market API
 """
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
-import urllib.parse
+from urllib.parse import urlparse, parse_qs
 import json
 import ssl
 import threading
 import time
-import os
-import base64
-import urllib.error
-import http.cookiejar
-from backend.auth_handler import handle_login_request, handle_logout_request, get_auth_status, get_auth_headers, get_session_cookies
-import glob
-from urllib.error import HTTPError
+from backend.auth_handler import handle_login_request, handle_logout_request, get_auth_status, get_auth_headers
 import uuid
+from .trading_calculator import TradingCalculator
+import urllib.request
+import traceback
 
 # ===== CONFIGURATION =====
 REQUESTS_PER_SECOND = 5  # Change from 3 to 5
@@ -60,6 +57,11 @@ def clear_rate_limited():
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         print(f"Received GET request for path: {self.path}")
+        
+        # New: Handle fetching user's current WTB orders
+        if self.path == '/trading/my-wtb-orders':
+            self.handle_my_wtb_orders_endpoint()
+            return
         
         # Handle trading analysis progress polling endpoint FIRST
         if self.path.startswith('/api/trading-calc-progress'):
@@ -685,7 +687,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
         global trading_analysis_cancelled
         trading_analysis_cancelled = False  # Ensure reset at the very start
         print('[DEBUG] trading_analysis_cancelled reset to False at start of analysis')
-        from .trading_calculator import TradingCalculator
         data = json.loads(post_data.decode('utf-8'))
         all_items = data.get('all_items', [])
         min_profit = data.get('min_profit', 10)
@@ -803,7 +804,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
     def handle_trading_calc_progress(self):
         # Parse job_id from query string
-        from urllib.parse import urlparse, parse_qs
         query = urlparse(self.path).query
         params = parse_qs(query)
         job_id = params.get('job_id', [None])[0]
@@ -851,6 +851,70 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({'success': True, 'message': 'Analysis cancelled.'}).encode())
+
+    def handle_my_wtb_orders_endpoint(self):
+        """Fetch the logged-in user's current WTB (buy) orders from Warframe Market and return as JSON."""
+        # Check authentication
+        auth_headers = get_auth_headers()
+        auth_status = get_auth_status()
+        if not auth_headers or not auth_status.get('logged_in'):
+            self.send_response(401)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Not logged in'})
+            self.wfile.write(error_response.encode())
+            return
+        username = auth_status.get('username')
+        if not username:
+            self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': 'Could not determine username for profile orders'})
+            self.wfile.write(error_response.encode())
+            return
+        try:
+            api_url = f'https://api.warframe.market/v1/profile/{username}/orders'
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(api_url)
+            # Use browser-like headers
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0')
+            req.add_header('platform', 'pc')
+            req.add_header('language', 'en')
+            req.add_header('Origin', 'https://warframe.market')
+            req.add_header('Referer', 'https://warframe.market/')
+            req.add_header('Accept', 'application/json')
+            req.add_header('Content-Type', 'application/json')
+            # Only send JWT in Cookie header
+            jwt_token = None
+            for key, value in auth_headers.items():
+                if key.lower() == 'authorization' and value.lower().startswith('bearer '):
+                    jwt_token = value[7:]
+            if jwt_token:
+                req.add_header('Cookie', f'JWT={jwt_token}')
+            with urllib.request.urlopen(req, context=context) as response:
+                data = response.read()
+                orders_json = json.loads(data.decode('utf-8'))
+                print(f"[DEBUG] Raw orders_json: {orders_json}")
+                buy_orders = orders_json.get('payload', {}).get('buy_orders', [])
+                print(f"[DEBUG] buy_orders: {buy_orders[:2]} (total: {len(buy_orders)})")
+                self.send_response(200)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True, 'orders': buy_orders}).encode())
+        except Exception as e:
+            print(f"[ERROR] Exception in handle_my_wtb_orders_endpoint: {e}")
+            traceback.print_exc()  # Print the full traceback
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Error fetching WTB orders: {str(e)}'})
+            self.wfile.write(error_response.encode())
 
     def do_OPTIONS(self):
         # Handle CORS preflight requests
