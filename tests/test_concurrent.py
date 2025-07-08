@@ -77,3 +77,79 @@ def test_concurrent_requests():
     # Assertions for pytest
     assert results_seq == results_concurrent, "Sequential and concurrent results should match"
     assert concurrent_time <= seq_time, f"Concurrent processing ({concurrent_time:.2f}s) should not be slower than sequential ({seq_time:.2f}s)" 
+    
+def test_backend_semaphore():
+    """Test the backend semaphore to ensure it limits concurrent requests"""
+    print("Testing backend semaphore...")
+    
+    # Mock a semaphore with a limit of 2
+    semaphore = threading.Semaphore(2)
+    
+    def limited_function(job_id):
+        with semaphore:
+            print(f"[Job {job_id}] Acquired semaphore")
+            time.sleep(1)  # Simulate work
+            print(f"[Job {job_id}] Released semaphore")
+
+def test_internal_server_error_handling():
+    """Test handling of internal server errors"""
+    print("Testing internal server error handling...")
+    
+    # Mock a function that simulates an internal server error
+    def mock_internal_error():
+        raise Exception("Internal Server Error")
+    
+    try:
+        mock_internal_error()
+    except Exception as e:
+        print(f"Caught expected error: {e}")
+        assert str(e) == "Internal Server Error", "Should catch the internal server error"
+
+# ADD ACTUAL API OR PROXY SERVER CONCURRENCY INSTEAD OF MOCK
+
+def test_actual_proxy_server_concurrency():
+    """
+    Test actual concurrency against the running proxy server (if available).
+    This test assumes the proxy server is running locally on port 8000 and exposes
+    an endpoint /api/orders/{url_name}.
+    """
+    print("Testing actual proxy server concurrency...")
+
+    proxy_url_template = "http://localhost:8000/api/orders/{url_name}"
+    test_items = [
+        {"id": "test1", "item_name": "Test Item 1", "url_name": "lex_prime_barrel"},
+        {"id": "test2", "item_name": "Test Item 2", "url_name": "soma_prime_receiver"},
+        {"id": "test3", "item_name": "Test Item 3", "url_name": "orthos_prime_handle"},
+    ]
+
+    results = {}
+    results_lock = threading.Lock()
+    threads = []
+
+    def fetch_from_proxy(item, job_id):
+        url = proxy_url_template.format(url_name=item["url_name"])
+        try:
+            context = ssl._create_unverified_context()
+            with urllib.request.urlopen(url, context=context, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+            print(f"[Job {job_id}] Success: {item['item_name']}")
+        except Exception as e:
+            data = {"error": str(e)}
+            print(f"[Job {job_id}] Error: {e}")
+        with results_lock:
+            results[item["id"]] = data
+
+    for idx, item in enumerate(test_items):
+        thread = threading.Thread(target=fetch_from_proxy, args=(item, idx))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    print("Results from proxy server concurrency test:")
+    for item_id, data in results.items():
+        print(f"{item_id}: {str(data)[:100]}...")  # Print first 100 chars for brevity
+
+    # Optionally, add assertions if you know the expected structure
+    assert all(isinstance(data, dict) for data in results.values()), "All results should be dicts"

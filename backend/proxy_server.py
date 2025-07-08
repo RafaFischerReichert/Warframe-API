@@ -53,6 +53,40 @@ def clear_rate_limited():
         if rate_limit_detected:
             print(f"[RATE LIMIT] Rate limiting cleared at {time.strftime('%H:%M:%S')}")
         rate_limit_detected = False
+        
+def handle_auth_login_request(username: str, password: str) -> dict:
+    """
+    Handle authentication login request
+    
+    Args:
+        username: The username/email for login
+        password: The password for login
+        
+    Returns:
+        dict: Response with success status and JWT token if successful
+    """
+    try:
+        # Use the existing auth handler to perform the login
+        result = handle_login_request(username, password)
+        
+        # If login was successful, extract the JWT token
+        if result.get('success'):
+            jwt_token = result.get('csrf_token')  # The auth handler stores JWT as csrf_token
+            return {
+                'success': True,
+                'jwt': jwt_token
+            }
+        else:
+            return {
+                'success': False,
+                'message': result.get('message', 'Login failed')
+            }
+            
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'Login error: {str(e)}'
+        }
 
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -936,6 +970,15 @@ def run_server(port=8000):
     except KeyboardInterrupt:
         print("\nShutting down server...")
         httpd.shutdown()
+
+def handle_dummy_proxy(self):
+    """A dummy proxy endpoint for testing."""
+    self.send_response(200)
+    self.send_header('Access-Control-Allow-Origin', '*')
+    self.send_header('Content-Type', 'application/json')
+    self.end_headers()
+    response = {'success': True, 'message': 'Dummy proxy endpoint reached'}
+    self.wfile.write(json.dumps(response).encode())
 
 if __name__ == '__main__':
     run_server() 

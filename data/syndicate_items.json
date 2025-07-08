@@ -318,9 +318,6 @@
       { "name": "Repelling Bastille", "type": "mod", "standing_cost": 25000 },
       { "name": "Photon Repeater", "type": "mod", "standing_cost": 25000 },
       { "name": "Shadow Haze", "type": "mod", "standing_cost": 25000 },
-      { "name": "Secura Penta", "type": "weapon", "standing_cost": 125000 },
-      { "name": "Secura Lecta", "type": "weapon", "standing_cost": 125000 },
-      { "name": "Secura Dual Cestra", "type": "weapon", "standing_cost": 100000 },
       { "name": "Secura Syandana", "type": "cosmetic", "standing_cost": 100000 },
       { "name": "Exilus Weapon Adapter Blueprint", "type": "blueprint", "standing_cost": 75000 }
     ]
@@ -462,10 +459,7 @@
       { "name": "Repelling Bastille", "type": "mod", "standing_cost": 25000 },
       { "name": "Photon Repeater", "type": "mod", "standing_cost": 25000 },
       { "name": "Shadow Haze", "type": "mod", "standing_cost": 25000 },
-      { "name": "Sancti Magistar", "type": "weapon", "standing_cost": 125000 },
       { "name": "Sancti Syandana", "type": "cosmetic", "standing_cost": 100000 },
-      { "name": "Sancti Castanas", "type": "weapon", "standing_cost": 100000 },
-      { "name": "Sancti Tigris", "type": "weapon", "standing_cost": 125000 },
       { "name": "Exilus Weapon Adapter Blueprint", "type": "blueprint", "standing_cost": 75000 },
       { "name": "Fused Reservoir", "type": "mod", "standing_cost": 25000 },
       { "name": "Critical Surge", "type": "mod", "standing_cost": 25000 },

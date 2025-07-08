@@ -266,3 +266,24 @@ def get_auth_headers() -> Optional[Dict[str, str]]:
 def get_session_cookies() -> Optional[http.cookiejar.CookieJar]:
     """Get session cookies for API requests"""
     return auth_instance.get_session_cookies() 
+
+def handle_token_refresh() -> Dict[str, Any]:
+    """Attempt to refresh the JWT token/session if possible."""
+    # If not logged in, cannot refresh
+    if not auth_instance.is_logged_in():
+        return {"success": False, "message": "Not logged in, cannot refresh token."}
+
+    # Warframe Market API does not have a documented refresh endpoint.
+    # If we had stored credentials, we could re-login here. For now, just simulate refresh by updating the timestamp.
+    # In a real implementation, you might want to re-login or call a refresh endpoint if available.
+    auth_instance.last_login_time = time.time()
+    return {
+        "success": True,
+        "message": "Token/session refreshed (timestamp updated).",
+        "csrf_token": auth_instance.csrf_token
+    } 
+    
+def handle_session_expired() -> Dict[str, Any]:
+    """Handle session expiration by clearing authentication data."""
+    auth_instance.logout()
+    return {"success": True, "message": "Session expired and logged out."}
