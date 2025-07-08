@@ -13,7 +13,7 @@ import os
 import base64
 import urllib.error
 import http.cookiejar
-from auth_handler import handle_login_request, handle_logout_request, get_auth_status, get_auth_headers, get_session_cookies
+from backend.auth_handler import handle_login_request, handle_logout_request, get_auth_status, get_auth_headers, get_session_cookies
 import glob
 from urllib.error import HTTPError
 import uuid

@@ -73,8 +73,7 @@ def test_concurrent_requests():
     
     print(f"\nSpeedup: {seq_time/concurrent_time:.2f}x faster")
     print(f"Expected: ~{len(test_items)}x faster (all requests in parallel)")
-    
-    return results_seq, results_concurrent
 
-if __name__ == "__main__":
-    test_concurrent_requests() 
+    # Assertions for pytest
+    assert results_seq == results_concurrent, "Sequential and concurrent results should match"
+    assert concurrent_time <= seq_time, f"Concurrent processing ({concurrent_time:.2f}s) should not be slower than sequential ({seq_time:.2f}s)" 
