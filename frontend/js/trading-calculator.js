@@ -358,8 +358,12 @@ function updateTable() {
         `;
         return;
     }
+    // Sort by netProfit descending and take top CONFIG.MAX_OPPORTUNITIES
+    const sortedOpportunities = [...allOpportunities]
+        .sort((a, b) => b.netProfit - a.netProfit)
+        .slice(0, CONFIG.MAX_OPPORTUNITIES);
     
-    allOpportunities.forEach((opp, index) => {
+    sortedOpportunities.forEach((opp, index) => {
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
         row.addEventListener('click', () => selectRow(row));

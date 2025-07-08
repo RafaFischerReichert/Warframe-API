@@ -685,7 +685,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         global trading_analysis_cancelled
         trading_analysis_cancelled = False  # Ensure reset at the very start
         print('[DEBUG] trading_analysis_cancelled reset to False at start of analysis')
-        from trading_calculator import TradingCalculator
+        from .trading_calculator import TradingCalculator
         data = json.loads(post_data.decode('utf-8'))
         all_items = data.get('all_items', [])
         min_profit = data.get('min_profit', 10)
