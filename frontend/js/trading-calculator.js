@@ -43,6 +43,7 @@ let analysisAbortController = null;
 // Trading workflow state
 let pendingItems = [];
 let boughtItems = [];
+let soldItems = [];
 
 // Local storage keys
 const STORAGE_KEYS = {
@@ -506,13 +507,16 @@ function loadTradingWorkflowData() {
     try {
         const pendingData = localStorage.getItem(STORAGE_KEYS.PENDING_ITEMS);
         const boughtData = localStorage.getItem(STORAGE_KEYS.BOUGHT_ITEMS);
+        const soldData = localStorage.getItem('warframe_trading_sold_items');
         
         pendingItems = pendingData ? JSON.parse(pendingData) : [];
         boughtItems = boughtData ? JSON.parse(boughtData) : [];
+        soldItems = soldData ? JSON.parse(soldData) : [];
     } catch (error) {
         console.error('Error loading trading workflow data:', error);
         pendingItems = [];
         boughtItems = [];
+        soldItems = [];
     }
 }
 
@@ -520,6 +524,7 @@ function saveTradingWorkflowData() {
     try {
         localStorage.setItem(STORAGE_KEYS.PENDING_ITEMS, JSON.stringify(pendingItems));
         localStorage.setItem(STORAGE_KEYS.BOUGHT_ITEMS, JSON.stringify(boughtItems));
+        localStorage.setItem('warframe_trading_sold_items', JSON.stringify(soldItems));
     } catch (error) {
         console.error('Error saving trading workflow data:', error);
     }
@@ -542,16 +547,96 @@ function updatePendingItemsUI() {
     pendingItemsContainer.innerHTML = itemsHTML;
 }
 
+let profitChart = null;
+let profitChartInitialized = false;
+
+function initProfitChart() {
+    const ctx = document.getElementById('profitChart').getContext('2d');
+    profitChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Cumulative Profit',
+                data: [],
+                borderColor: '#ffd700',
+                backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                fill: true,
+                tension: 0.2,
+                pointRadius: 4,
+                pointBackgroundColor: '#ffd700',
+                pointBorderColor: '#222',
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Portfolio Profit Over Time', color: '#ffd700', font: { size: 18 } }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Sale Time', color: '#b0b0b0' },
+                    ticks: { color: '#b0b0b0', maxRotation: 45, minRotation: 0 },
+                    grid: { color: '#222' }
+                },
+                y: {
+                    title: { display: true, text: 'Cumulative Profit (plat)', color: '#b0b0b0' },
+                    ticks: { color: '#b0b0b0' },
+                    grid: { color: '#222' }
+                }
+            }
+        }
+    });
+    profitChartInitialized = true;
+}
+
+function updateProfitChart() {
+    if (!profitChartInitialized) {
+        initProfitChart();
+    }
+    // Build cumulative profit data from soldItems
+    let labels = [];
+    let data = [];
+    let cumulative = 0;
+    // Sort soldItems by sale time (if available)
+    const sorted = [...soldItems].sort((a, b) => {
+        const aTime = a.soldAt ? new Date(a.soldAt).getTime() : 0;
+        const bTime = b.soldAt ? new Date(b.soldAt).getTime() : 0;
+        return aTime - bTime;
+    });
+    for (const item of sorted) {
+        cumulative += item.expectedProfit || 0;
+        // Use sale time or fallback to now
+        let label = item.soldAt ? new Date(item.soldAt).toLocaleString() : 'Unknown';
+        labels.push(label);
+        data.push(cumulative);
+    }
+    profitChart.data.labels = labels;
+    profitChart.data.datasets[0].data = data;
+    profitChart.update();
+}
+
 function updateBoughtItemsUI() {
     if (!boughtItemsContainer) return;
     
+    // Portfolio summary
+    const totalProfit = soldItems.reduce((sum, item) => sum + (item.expectedProfit || 0), 0);
+    const summaryHTML = `
+        <div class="portfolio-summary" style="margin-bottom: 15px; text-align: center; color: #00d46e; font-weight: bold;">
+            Total Realized Profit: <span style="color: #ffd700;">${totalProfit} plat</span>
+        </div>
+    `;
+    
     if (boughtItems.length === 0) {
-        boughtItemsContainer.innerHTML = '<div class="empty-state"><p style="color: #666; text-align: center; font-style: italic;">No bought items</p></div>';
+        boughtItemsContainer.innerHTML = summaryHTML + '<div class="empty-state"><p style="color: #666; text-align: center; font-style: italic;">No bought items</p></div>';
+        updateProfitChart();
         return;
     }
     
     const itemsHTML = boughtItems.map(item => createBoughtItemCard(item)).join('');
-    boughtItemsContainer.innerHTML = itemsHTML;
+    boughtItemsContainer.innerHTML = summaryHTML + itemsHTML;
+    updateProfitChart();
 }
 
 function createPendingItemCard(item) {
@@ -799,13 +884,13 @@ function markAsSold(itemId) {
     if (item.wtsOrderId) {
         deleteOrder(item.wtsOrderId);
     }
-    
-    // Remove from bought items
+    // Move to sold items
     boughtItems.splice(itemIndex, 1);
-    
+    item.soldAt = new Date().toISOString();
+    soldItems.push(item);
     saveTradingWorkflowData();
     updateTradingWorkflowUI();
-    
+    updateProfitChart();
     showMessage(`${item.itemName} marked as sold`, 'success');
 }
 
@@ -847,4 +932,19 @@ function removeBoughtItem(itemId) {
 
 function generateItemId() {
     return 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Initialize chart on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            if (!profitChartInitialized) initProfitChart();
+            updateProfitChart();
+        }, 0);
+    });
+} else {
+    setTimeout(() => {
+        if (!profitChartInitialized) initProfitChart();
+        updateProfitChart();
+    }, 0);
 } 

@@ -92,16 +92,11 @@
 
                     <!-- Right Panel: Bought Items -->
                     <div class="trading-panel bought-panel">
-                        <h4 style="color: #00ff00; text-align: center; margin-bottom: 15px;">💰 Bought Items</h4>
-                        <div class="panel-description">
-                            <p style="font-size: 0.9em; color: #b0b0b0; text-align: center; margin-bottom: 15px;">
-                                Items you've acquired. Click "Sold" when you sell the item.
-                            </p>
-                        </div>
-                        <div id="boughtItemsContainer" class="items-container">
-                            <div class="empty-state">
-                                <p style="color: #666; text-align: center; font-style: italic;">No bought items</p>
-                            </div>
+                        <h4 style="color: #00d46e; text-align: center; margin-bottom: 15px;">💼 Portfolio (Bought Items)</h4>
+                        <div id="boughtItemsContainer" class="items-container"></div>
+                        <!-- Profit Chart -->
+                        <div style="margin: 30px 0 10px 0; text-align: center;">
+                            <canvas id="profitChart" width="400" height="180" style="max-width: 100%; background: #181c24; border-radius: 8px;"></canvas>
                         </div>
                     </div>
                 </div>
@@ -164,6 +159,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/trading-calculator.js" defer></script>
 </body>
 </html> 
