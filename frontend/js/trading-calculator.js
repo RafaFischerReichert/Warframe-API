@@ -308,7 +308,9 @@ async function analyzeAllPrimeSets() {
             currentItem.textContent = status === 'done' ? 'Analysis complete!' : `Analyzing... (${progress}/${total})`;
             // Only add new results
             if (results && results.length > lastResultsLength) {
-                allOpportunities = results;
+                // Filter out opportunities for items that already have a WTB order
+                const pendingItemIds = new Set(pendingItems.map(item => item.itemId));
+                allOpportunities = results.filter(opp => !pendingItemIds.has(opp.itemId));
                 updateTable();
                 lastResultsLength = results.length;
             }

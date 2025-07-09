@@ -16,11 +16,13 @@ def test_dummy_login():
     mock_response_auth.read.return_value = b''
     mock_response_auth.status = 200
     mock_response_auth.headers = mock_headers
+    mock_response_auth.__enter__.return_value = mock_response_auth  # Ensure context manager works
     # Second call: /auth/signin (login)
     mock_response_signin = MagicMock()
     mock_response_signin.read.return_value = b'{"success": true, "payload": {"user": {"ingame_name": "dummyuser"}}}'
     mock_response_signin.status = 200
     mock_response_signin.headers = mock_headers
+    mock_response_signin.__enter__.return_value = mock_response_signin  # Ensure context manager works
     with patch('urllib.request.urlopen', side_effect=[mock_response_auth, mock_response_signin]):
         result = auth_handler.handle_login_request('dummyuser', 'dummypass')
         assert result['success'] is True
