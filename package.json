@@ -23,5 +23,11 @@
   "homepage": "https://github.com/RafaFischerReichert/Warframe-API#readme",
   "devDependencies": {
     "cypress": "^14.5.1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^2.7.0",
+    "path-to-regexp": "^8.2.0"
   }
 }
