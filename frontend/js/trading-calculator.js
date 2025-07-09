@@ -83,6 +83,29 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('WTB orders refreshed!', 'success');
         });
     }
+    // Add Delete All WTB Orders button handler
+    const deleteAllWTBOrdersBtn = document.getElementById('deleteAllWTBOrdersBtn');
+    if (deleteAllWTBOrdersBtn) {
+        deleteAllWTBOrdersBtn.addEventListener('click', async function() {
+            if (!pendingItems.length) {
+                showMessage('No WTB orders to delete.', 'warning');
+                return;
+            }
+            if (!confirm('Are you sure you want to delete ALL your WTB orders? This cannot be undone.')) return;
+            deleteAllWTBOrdersBtn.disabled = true;
+            let deleted = 0;
+            for (const item of [...pendingItems]) {
+                if (item.orderId) {
+                    await deleteOrder(item.orderId);
+                    deleted++;
+                }
+            }
+            await fetchMyWTBOrders();
+            updateTradingWorkflowUI();
+            showMessage(`Deleted ${deleted} WTB order(s).`, 'success');
+            deleteAllWTBOrdersBtn.disabled = false;
+        });
+    }
 });
 
 // Authentication status checking
