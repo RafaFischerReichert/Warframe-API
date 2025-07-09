@@ -1,0 +1,27 @@
+{
+  "name": "warframe-api",
+  "version": "1.0.0",
+  "description": "A collection of tools for interacting with the Warframe Market API, including a Prime Items Trading Analyzer and authentication system.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaFischerReichert/Warframe-API.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/RafaFischerReichert/Warframe-API/issues"
+  },
+  "homepage": "https://github.com/RafaFischerReichert/Warframe-API#readme",
+  "devDependencies": {
+    "cypress": "^14.5.1"
+  }
+}

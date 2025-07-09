@@ -181,6 +181,29 @@ All file references in HTML have been updated to match this structure.
 
 ---
 
+## Frontend End-to-End Testing (Cypress)
+
+To run automated frontend tests:
+
+1. Start a local server so the HTML files are accessible (e.g., with Python):
+   ```sh
+   python -m http.server 8080
+   ```
+   Then visit http://localhost:8080/frontend/login.html or trading-calculator.html in your browser.
+
+2. In another terminal, open Cypress:
+   ```sh
+   npx cypress open
+   ```
+   or to run all tests headlessly:
+   ```sh
+   npx cypress run
+   ```
+
+Cypress test specs are in `cypress/e2e/`.
+
+---
+
 ## Credits & Acknowledgments
 
 - **Warframe.market** for their public API and market data
