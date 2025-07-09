@@ -8,6 +8,7 @@ const fetch = require('node-fetch');
 const RateLimiter = require('./rateLimiter');
 const { v4: uuidv4 } = require('uuid');
 const session = require('./session');
+const logger = require('./logger');
 
 app.use(cors());
 app.use(express.json());
@@ -29,6 +30,7 @@ app.post('/api/trading-calc', async (req, res) => {
   const { allItems, ordersData, minProfit, maxInvestment, maxOrderAge, batchSize = 3 } = req.body;
   
   if (!allItems) {
+    logger.error('Missing allItems in /api/trading-calc request', { body: req.body });
     return res.status(400).json({ error: 'Missing allItems' });
   }
 
@@ -37,7 +39,7 @@ app.post('/api/trading-calc', async (req, res) => {
     (item.item_name || '').toLowerCase().includes('prime')
   );
 
-  console.log(`[DEBUG] Found ${primeItems.length} Prime items from API. Sample: ${primeItems.slice(0, 5).map(item => item.item_name)}`);
+  logger.info(`[DEBUG] Found ${primeItems.length} Prime items from API. Sample: ${primeItems.slice(0, 5).map(item => item.item_name)}`);
 
   // Assign a unique job ID
   const jobId = uuidv4();
@@ -98,6 +100,7 @@ app.post('/trading/create-wtb', async (req, res) => {
     const { item_id, price, quantity = 1 } = req.body;
     
     if (!item_id || price <= 0) {
+      logger.error('Invalid create-wtb request', { body: req.body });
       return res.status(400).json({ 
         success: false, 
         message: 'Item ID and valid price are required' 
@@ -107,6 +110,7 @@ app.post('/trading/create-wtb', async (req, res) => {
     // Check if user is logged in
     const authStatus = authHandler.getAuthStatus();
     if (!authStatus.loggedIn) {
+      logger.warn('Unauthorized create-wtb attempt');
       return res.status(401).json({ 
         success: false, 
         message: 'Must be logged in to create orders' 
@@ -122,7 +126,7 @@ app.post('/trading/create-wtb', async (req, res) => {
       visible: true
     };
 
-    console.log(`[DEBUG] Order payload: ${JSON.stringify(orderData)}`);
+    logger.info('Creating WTB order', { orderData });
 
     // Acquire rate limit slot
     await rateLimiter.acquire();
@@ -151,7 +155,7 @@ app.post('/trading/create-wtb', async (req, res) => {
       // Check for rate limiting from API
       if (apiRes.status === 429) {
         rateLimiter.setRateLimited();
-        console.log(`[RATE LIMIT] HTTP 429 detected for ${apiUrl}`);
+        logger.warn(`[RATE LIMIT] HTTP 429 detected for ${apiUrl}`);
       } else if (apiRes.status === 200) {
         rateLimiter.clearRateLimit();
       }
@@ -163,7 +167,7 @@ app.post('/trading/create-wtb', async (req, res) => {
       rateLimiter.release();
     }
   } catch (error) {
-    console.error('[ERROR] Error in create-wtb:', error);
+    logger.error('Error in create-wtb', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       message: `Server error: ${error.message}` 
@@ -417,6 +421,7 @@ app.get('/trading/my-wtb-orders', async (req, res) => {
   // Check if user is logged in
   const authStatus = authHandler.getAuthStatus();
   if (!authStatus.loggedIn || !authStatus.username) {
+    logger.warn('Unauthorized my-wtb-orders attempt');
     return res.status(401).json({
       success: false,
       message: 'Must be logged in to view WTB orders',
@@ -439,6 +444,7 @@ app.get('/trading/my-wtb-orders', async (req, res) => {
     const apiRes = await fetch(apiUrl, { headers });
     const data = await apiRes.json();
     if (apiRes.status !== 200) {
+      logger.error('Failed to fetch WTB orders', { status: apiRes.status, message: data.error?.message });
       return res.status(apiRes.status).json({
         success: false,
         message: data.error?.message || 'Failed to fetch orders',
@@ -448,11 +454,13 @@ app.get('/trading/my-wtb-orders', async (req, res) => {
     // Filter for WTB (buy) orders
     const allOrders = data.payload?.orders || [];
     const wtbOrders = allOrders.filter(order => order.order_type === 'buy');
+    logger.info('Fetched WTB orders', { count: wtbOrders.length });
     res.json({
       success: true,
       orders: wtbOrders
     });
   } catch (error) {
+    logger.error('Error in my-wtb-orders', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       message: `Server error: ${error.message}`,
