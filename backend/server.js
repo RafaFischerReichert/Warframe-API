@@ -7,6 +7,7 @@ const authHandler = require('./authHandler');
 const fetch = require('node-fetch');
 const RateLimiter = require('./rateLimiter');
 const { v4: uuidv4 } = require('uuid');
+const session = require('./session');
 
 app.use(cors());
 app.use(express.json());
@@ -411,6 +412,55 @@ app.get('/trading/my-wtb-orders', async (req, res) => {
   }
 });
 
+// My WTB orders endpoint
+app.get('/trading/my-wtb-orders', async (req, res) => {
+  // Check if user is logged in
+  const authStatus = authHandler.getAuthStatus();
+  if (!authStatus.loggedIn || !authStatus.username) {
+    return res.status(401).json({
+      success: false,
+      message: 'Must be logged in to view WTB orders',
+      orders: []
+    });
+  }
+
+  try {
+    // Fetch user's orders from Warframe Market API
+    const apiUrl = `https://api.warframe.market/v1/profile/${authStatus.username}/orders`;
+    const headers = {
+      'Accept': 'application/json',
+      'User-Agent': 'Warframe-Market-Proxy/1.0',
+    };
+    // Add auth headers
+    const authHeaders = authHandler.getAuthHeaders();
+    if (authHeaders) {
+      Object.assign(headers, authHeaders);
+    }
+    const apiRes = await fetch(apiUrl, { headers });
+    const data = await apiRes.json();
+    if (apiRes.status !== 200) {
+      return res.status(apiRes.status).json({
+        success: false,
+        message: data.error?.message || 'Failed to fetch orders',
+        orders: []
+      });
+    }
+    // Filter for WTB (buy) orders
+    const allOrders = data.payload?.orders || [];
+    const wtbOrders = allOrders.filter(order => order.order_type === 'buy');
+    res.json({
+      success: true,
+      orders: wtbOrders
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`,
+      orders: []
+    });
+  }
+});
+
 // Authentication endpoints
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
@@ -426,9 +476,20 @@ app.post('/auth/logout', (req, res) => {
   res.json(result);
 });
 
+// Authentication status endpoint
 app.get('/auth/status', (req, res) => {
-  const status = authHandler.getAuthStatus();
-  res.json(status);
+  try {
+    const status = session.getSessionStatus();
+    res.json({
+      success: true,
+      ...status
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`
+    });
+  }
 });
 
 // Rate limit status endpoint
