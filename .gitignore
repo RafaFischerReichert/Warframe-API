@@ -33,3 +33,10 @@ test_auth.py
 # Temporary files
 *.tmp
 *.temp
+
+# Node files
+node_modules
+build
+npm-debug.log
+.env
+.DS_Store

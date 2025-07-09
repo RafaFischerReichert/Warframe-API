@@ -56,7 +56,7 @@ A collection of tools for interacting with the Warframe Market API, including a 
 1. **Clone or download this repository.**
 2. **Start the Python proxy server:**
    ```bash
-   python proxy_server.py
+   python -m backend.proxy_server
    ```
 3. **Open your browser** and go to:
    ```
