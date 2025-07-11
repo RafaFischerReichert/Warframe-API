@@ -371,7 +371,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 
                 # Debug: print outgoing request details
                 print(f"[DEBUG] Proxying POST to {api_url}")
-                print(f"[DEBUG] Request headers:")
+                # print(f"[DEBUG] Request headers:")
                 for header, value in req.header_items():
                     print(f"    {header}: {value}")
                 print(f"[DEBUG] Request payload: {post_data}")
@@ -413,6 +413,40 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(data)
                     
+        except urllib.error.HTTPError as e:
+            print(f"HTTP Error {e.code}: {e.reason}")
+            # Read the error response body to see what the API is telling us
+            error_data = e.read()
+            try:
+                error_json = json.loads(error_data.decode('utf-8'))
+                print(f"[DEBUG] API Error Response: {error_json}")
+            except:
+                print(f"[DEBUG] API Error Response (raw): {error_data}")
+            
+            # Check for rate limiting in error message
+            if e.code == 429 or "429" in str(e) or "Too Many Requests" in str(e):
+                set_rate_limited()
+                print(f"[RATE LIMIT] Rate limiting detected via POST error: {e}")
+            
+            # Debug: If this is a 400 error on order creation, try to fetch item details
+            if e.code == 400 and '/profile/orders' in api_url:
+                print(f"[DEBUG] 400 error on order creation - attempting to debug item details...")
+                try:
+                    # Extract item_id from the request payload
+                    request_data = json.loads(post_data.decode('utf-8'))
+                    item_id = request_data.get('item', '')
+                    if item_id:
+                        print(f"[DEBUG] Attempting to fetch details for item_id: {item_id}")
+                        # Try to fetch item details to see what might be wrong
+                        self.debug_item_details(item_id)
+                except Exception as debug_e:
+                    print(f"[DEBUG] Error during debug item details: {debug_e}")
+            
+            self.send_response(e.code)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(error_data)
         except Exception as e:
             print(f"Error proxying POST request: {e}")
             
@@ -522,6 +556,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 error_response = json.dumps({'success': False, 'message': 'Item ID and valid price are required'})
                 self.wfile.write(error_response.encode())
                 return
+            
+            # Debug: Store item info for potential error debugging
+            debug_item_info = {
+                'item_id': item_id,
+                'price': price,
+                'quantity': quantity
+            }
             
             # Check if user is logged in
             auth_status = get_auth_status()
@@ -749,6 +790,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
             
             def fetch_item_orders(item, job_id):
                 """Fetch orders for a single item - designed to be run in a thread"""
+                # Check for cancellation at the start of each item fetch
+                with trading_jobs_lock:
+                    if trading_jobs[job_id]['cancelled']:
+                        print(f'[DEBUG] [Job {job_id}] Cancelled during item fetch')
+                        return None, []
+                
                 item_name = str(item.get('item_name') or '')
                 item_id = str(item.get('id') or '')
                 url_name = str(item.get('url_name') or '')
@@ -785,10 +832,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     return item_id, []
             
             for batch_start in range(0, len(prime_items), batch_size):
-                if trading_jobs[job_id]['cancelled']:
-                    print(f'[DEBUG] Job {job_id} cancelled during batch processing')
-                    trading_jobs[job_id]['status'] = 'cancelled'
-                    return
+                # Check for cancellation before starting each batch
+                with trading_jobs_lock:
+                    if trading_jobs[job_id]['cancelled']:
+                        print(f'[DEBUG] Job {job_id} cancelled during batch processing')
+                        trading_jobs[job_id]['status'] = 'cancelled'
+                        return
                 
                 batch = prime_items[batch_start:batch_start+batch_size]
                 batch_start_time = time.time()
@@ -801,6 +850,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 
                 # Start all threads for this batch
                 for item in batch:
+                    # Check for cancellation before starting each thread
+                    with trading_jobs_lock:
+                        if trading_jobs[job_id]['cancelled']:
+                            print(f'[DEBUG] Job {job_id} cancelled before starting threads')
+                            trading_jobs[job_id]['status'] = 'cancelled'
+                            return
+                    
                     def make_thread_func(item_to_process):
                         def thread_func():
                             item_id, orders = fetch_item_orders(item_to_process, job_id)
@@ -818,7 +874,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 
                 # Collect results from all threads
                 for item_id, orders in results.items():
-                    orders_data[item_id] = orders
+                    if item_id is not None:  # Skip cancelled items
+                        orders_data[item_id] = orders
                 
                 # After each batch, analyze and update job results
                 batch_opps = calc.analyze_prime_items(batch, orders_data, max_order_age=max_order_age)
@@ -935,9 +992,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             with urllib.request.urlopen(req, context=context) as response:
                 data = response.read()
                 orders_json = json.loads(data.decode('utf-8'))
-                print(f"[DEBUG] Raw orders_json: {orders_json}")
                 buy_orders = orders_json.get('payload', {}).get('buy_orders', [])
-                print(f"[DEBUG] buy_orders: {buy_orders[:2]} (total: {len(buy_orders)})")
+                print(f"[DEBUG] Found {len(buy_orders)} WTB orders for user")
                 self.send_response(200)
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Content-Type', 'application/json')
@@ -977,57 +1033,103 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.wfile.write(error_response.encode())
                 return
 
-            api_url = f'https://api.warframe.market/v1/profile/{username}/orders'
-            print(f"[DEBUG] Attempting to delete all WTB orders at URL: {api_url}")
-
+            # First, fetch all user's orders to get the WTB order IDs
+            print(f"[DEBUG] Fetching orders for user: {username}")
+            fetch_url = f'https://api.warframe.market/v1/profile/{username}/orders'
+            
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
-
-            req = urllib.request.Request(api_url, method='DELETE')
-            req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
-
-            # Add auth headers
+            
+            # Fetch orders
+            fetch_req = urllib.request.Request(fetch_url)
+            fetch_req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+            fetch_req.add_header('platform', 'pc')
+            fetch_req.add_header('language', 'en')
+            fetch_req.add_header('Origin', 'https://warframe.market')
+            fetch_req.add_header('Referer', 'https://warframe.market/')
+            fetch_req.add_header('Accept', 'application/json')
+            fetch_req.add_header('Content-Type', 'application/json')
+            
+            # Add auth headers for fetch
             auth_headers = get_auth_headers()
             jwt_token = None
             if auth_headers:
                 for key, value in auth_headers.items():
-                    req.add_header(key, value)
+                    fetch_req.add_header(key, value)
                     if key.lower() == 'authorization' and value.lower().startswith('bearer '):
                         jwt_token = value[7:]
-                # Also add JWT as a cookie if available
                 if jwt_token:
-                    req.add_header('Cookie', f'JWT={jwt_token}')
-                    print(f"[DEBUG] Added Cookie header for delete all: JWT={jwt_token}")
-            else:
-                print("[DEBUG] No auth headers available for DELETE all request.")
-
-            with urllib.request.urlopen(req, context=context) as response:
+                    fetch_req.add_header('Cookie', f'JWT={jwt_token}')
+            
+            with urllib.request.urlopen(fetch_req, context=context) as response:
                 data = response.read()
-                content_type = response.headers.get('Content-Type', 'application/json')
-
-                # Transform the response for delete endpoints
-                if response.status == 200:
+                orders_json = json.loads(data.decode('utf-8'))
+                buy_orders = orders_json.get('payload', {}).get('buy_orders', [])
+                print(f"[DEBUG] Found {len(buy_orders)} WTB orders to delete")
+                
+                if not buy_orders:
+                    # No orders to delete
+                    self.send_response(200)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    response_data = json.dumps({'success': True, 'message': 'No WTB orders found to delete'})
+                    self.wfile.write(response_data.encode())
+                    return
+                
+                # Delete each WTB order individually
+                deleted_count = 0
+                failed_count = 0
+                
+                for order in buy_orders:
+                    order_id = order.get('id')
+                    if not order_id:
+                        continue
+                        
+                    delete_url = f'https://api.warframe.market/v1/profile/orders/{order_id}'
+                    print(f"[DEBUG] Deleting order {order_id}")
+                    
+                    delete_req = urllib.request.Request(delete_url, method='DELETE')
+                    delete_req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+                    
+                    # Add auth headers for delete
+                    if auth_headers:
+                        for key, value in auth_headers.items():
+                            delete_req.add_header(key, value)
+                        if jwt_token:
+                            delete_req.add_header('Cookie', f'JWT={jwt_token}')
+                    
                     try:
-                        # For successful deletes, return frontend-expected format
-                        transformed_response = {
-                            'success': True,
-                            'message': 'All WTB orders deleted successfully'
-                        }
-                        data = json.dumps(transformed_response).encode()
-                        content_type = 'application/json'
-                        print(f"[DEBUG] Delete all response transformed: {transformed_response}")
+                        with urllib.request.urlopen(delete_req, context=context) as delete_response:
+                            if delete_response.status == 200:
+                                deleted_count += 1
+                                print(f"[DEBUG] Successfully deleted order {order_id}")
+                            else:
+                                failed_count += 1
+                                print(f"[DEBUG] Failed to delete order {order_id}, status: {delete_response.status}")
                     except Exception as e:
-                        print(f"[DEBUG] Failed to transform delete all response: {e}")
-
-                self.send_response(response.status)
+                        failed_count += 1
+                        print(f"[DEBUG] Exception deleting order {order_id}: {e}")
+                
+                # Return results
+                self.send_response(200)
                 self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE')
-                self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-                self.send_header('Content-Type', content_type)
-                self.send_header('Content-Length', str(len(data)))
+                self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(data)
+                
+                if failed_count == 0:
+                    response_data = json.dumps({
+                        'success': True, 
+                        'message': f'Successfully deleted {deleted_count} WTB orders'
+                    })
+                else:
+                    response_data = json.dumps({
+                        'success': True, 
+                        'message': f'Deleted {deleted_count} WTB orders, {failed_count} failed'
+                    })
+                
+                self.wfile.write(response_data.encode())
 
         except Exception as e:
             print(f"[ERROR] Exception in handle_delete_all_wtb_orders_endpoint: {e}")
@@ -1047,6 +1149,58 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.send_header('Access-Control-Max-Age', '86400')
         self.end_headers()
+
+    def debug_item_details(self, item_id):
+        """Debug helper to fetch item details when order creation fails"""
+        try:
+            # First try to get the item by ID
+            item_url = f'https://api.warframe.market/v1/items/{item_id}'
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(item_url)
+            req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+            req.add_header('Platform', 'pc')
+            req.add_header('accept', 'application/json')
+            
+            with urllib.request.urlopen(req, context=context) as response:
+                item_data = response.read()
+                item_json = json.loads(item_data.decode('utf-8'))
+                print(f"[DEBUG] Item details by ID: {item_json}")
+                if 'payload' in item_json and 'item' in item_json['payload']:
+                    item_info = item_json['payload']['item']
+                    print(f"[DEBUG] Item found: {item_info.get('item_name', 'Unknown')} (ID: {item_info.get('id')})")
+                    return item_info
+        except Exception as e:
+            print(f"[DEBUG] Could not fetch item details by ID {item_id}: {e}")
+        
+        # If that fails, try to search for the item
+        try:
+            search_url = f'https://api.warframe.market/v1/items/search?q={item_id}'
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(search_url)
+            req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+            req.add_header('Platform', 'pc')
+            req.add_header('accept', 'application/json')
+            
+            with urllib.request.urlopen(req, context=context) as response:
+                search_data = response.read()
+                search_json = json.loads(search_data.decode('utf-8'))
+                print(f"[DEBUG] Search results: {search_json}")
+                if 'payload' in search_json and 'items' in search_json['payload']:
+                    items = search_json['payload']['items']
+                    if items:
+                        print(f"[DEBUG] Found {len(items)} potential matches:")
+                        for item in items[:3]:  # Show first 3 matches
+                            print(f"[DEBUG]   - {item.get('item_name', 'Unknown')} (ID: {item.get('id')})")
+                        return items[0] if items else None
+        except Exception as e:
+            print(f"[DEBUG] Could not search for item {item_id}: {e}")
+        
+        print(f"[DEBUG] Could not find any details for item_id: {item_id}")
+        return None
 
 def run_server(port=8000):
     server_address = ('', port)

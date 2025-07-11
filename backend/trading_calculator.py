@@ -31,8 +31,6 @@ class TradingCalculator:
             print(f'[DEBUG] Analyzing {item_name} (ID: {item_id})')
             orders = orders_data.get(item_id, [])
             print(f'[DEBUG] {item_name} (ID: {item_id}): Retrieved {len(orders)} orders from orders_data')
-            if orders:
-                print(f'[DEBUG] {item_name}: First 3 raw orders: {orders[:3]}')
             opps = self.analyze_prime_item_orders(orders, item_name, item_id, max_order_age)
             opportunities.extend(opps)
         return opportunities
@@ -52,15 +50,13 @@ class TradingCalculator:
         # Temporarily remove 'visible == True' filter
         sell_orders = [o for o in orders if o.get('order_type') == 'sell']
         buy_orders = [o for o in orders if o.get('order_type') == 'buy']
-        print(f'[DEBUG] {item_name}: {len(sell_orders)} WTS, {len(buy_orders)} WTB orders (no visible filter)')
+        print(f'[DEBUG] {item_name}: {len(sell_orders)} WTS, {len(buy_orders)} WTB orders')
         if not sell_orders or not buy_orders:
             print(f'[DEBUG] {item_name}: No valid sell or buy orders (skipped)')
             return []
         lowest_sell = min(sell_orders, key=lambda o: o.get('platinum', float('inf')))
         highest_buy = max(buy_orders, key=lambda o: o.get('platinum', float('-inf')))
-        print(f'[DEBUG] {item_name}: Best WTS order: {lowest_sell}')
-        print(f'[DEBUG] {item_name}: Best WTB order: {highest_buy}')
-        print(f'[DEBUG] {item_name}: Best WTS price {lowest_sell.get("platinum")}, Best WTB price {highest_buy.get("platinum")}')
+        print(f'[DEBUG] {item_name}: WTS {lowest_sell.get("platinum")}p, WTB {highest_buy.get("platinum")}p')
         lowest_sell_price = lowest_sell.get('platinum', 0)
         highest_buy_price = highest_buy.get('platinum', 0)
         adjusted_buy_price = highest_buy_price + 1
@@ -73,7 +69,7 @@ class TradingCalculator:
             try:
                 last_seen = date_parser.parse(last_seen_str)
                 days_since_update = (now - last_seen).total_seconds() / (60 * 60 * 24)
-                print(f'[DEBUG] {item_name}: Best WTB last seen {days_since_update:.2f} days ago')
+                print(f'[DEBUG] {item_name}: WTB age {days_since_update:.1f} days')
             except Exception as e:
                 print(f'[DEBUG] {item_name}: Error parsing last_seen: {e}')
                 days_since_update = float('inf')
@@ -81,18 +77,18 @@ class TradingCalculator:
             print(f'[DEBUG] {item_name}: No last_seen/last_update for best WTB')
             days_since_update = float('inf')
         if days_since_update > max_order_age:
-            print(f'[DEBUG] {item_name}: Best WTB order too old ({days_since_update:.1f} days > {max_order_age} days, skipped)')
+            print(f'[DEBUG] {item_name}: WTB too old ({days_since_update:.1f}d > {max_order_age}d, skipped)')
             return []
         if adjusted_sell_price <= adjusted_buy_price:
-            print(f'[DEBUG] {item_name}: No profit (sell {adjusted_sell_price} <= buy {adjusted_buy_price}, skipped)')
+            print(f'[DEBUG] {item_name}: No profit (sell {adjusted_sell_price} <= buy {adjusted_buy_price})')
             return []
         if profit < self.min_profit:
-            print(f'[DEBUG] {item_name}: Profit {profit} < min_profit {self.min_profit} (skipped)')
+            print(f'[DEBUG] {item_name}: Profit {profit} < min {self.min_profit}')
             return []
         if self.max_investment != 0 and adjusted_buy_price > self.max_investment:
-            print(f'[DEBUG] {item_name}: Buy price {adjusted_buy_price} > max_investment {self.max_investment} (skipped)')
+            print(f'[DEBUG] {item_name}: Buy price {adjusted_buy_price} > max {self.max_investment}')
             return []
-        print(f'[DEBUG] {item_name}: Opportunity added! Buy {adjusted_buy_price}, Sell {adjusted_sell_price}, Profit {profit}, Last seen {days_since_update:.1f} days ago')
+        print(f'[DEBUG] {item_name}: ✓ Opportunity! Buy {adjusted_buy_price}, Sell {adjusted_sell_price}, Profit {profit}')
         return [{
             'itemName': item_name,
             'itemId': item_id,

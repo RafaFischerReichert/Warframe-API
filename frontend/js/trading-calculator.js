@@ -13,6 +13,7 @@ const CONFIG = {
 // DOM elements
 const minProfitInput = document.getElementById('minProfitInput');
 const maxInvestmentInput = document.getElementById('maxInvestmentInput');
+const autoAddCountInput = document.getElementById('autoAddCountInput');
 const analyzePrimeSetsBtn = document.getElementById('analyzePrimeSetsBtn');
 const clearTableBtn = document.getElementById('clearTableBtn');
 const tradingResultsDiv = document.getElementById('trading-results');
@@ -118,8 +119,10 @@ async function checkAuthStatus() {
         if (refreshWTBOrdersBtn) {
             refreshWTBOrdersBtn.disabled = !result.logged_in;
         }
+        return result; // Return auth status for autoAddTopOpportunities
     } catch (error) {
         console.error('Auth status check error:', error);
+        return { logged_in: false }; // Return false if auth check fails
     }
 }
 
@@ -328,6 +331,11 @@ async function analyzeAllPrimeSets() {
                 analyzePrimeSetsBtn.textContent = 'Analyze All Prime Items';
                 analysisProgressDiv.style.display = 'none';
                 polling = false;
+                
+                // Auto-add top opportunities if configured
+                if (status === 'done' && !cancelled) {
+                    await autoAddTopOpportunities();
+                }
                 return;
             }
             if (isAnalyzing) {
@@ -1052,6 +1060,80 @@ async function deleteAllWTBOrders() {
     } catch (error) {
         console.error('Error deleting all WTB orders:', error);
         showMessage('Error deleting WTB orders. Please try again.', 'error');
+    }
+}
+
+async function autoAddTopOpportunities() {
+    const autoAddCount = parseInt(autoAddCountInput?.value) || 0;
+    if (autoAddCount <= 0) return;
+    
+    // Check if user is logged in
+    const authStatus = await checkAuthStatusSimple();
+    if (!authStatus || !authStatus.logged_in) {
+        showMessage('You must be logged in to auto-add WTB orders', 'error');
+        return;
+    }
+    
+    // Get the top opportunities (sorted by profit)
+    const sortedOpportunities = [...allOpportunities].sort((a, b) => {
+        if (a.netProfit === '-' || b.netProfit === '-') return 0;
+        return b.netProfit - a.netProfit;
+    });
+    
+    const opportunitiesToAdd = sortedOpportunities.slice(0, autoAddCount);
+    
+    if (opportunitiesToAdd.length === 0) {
+        showMessage('No opportunities available to auto-add', 'warning');
+        return;
+    }
+    
+    // Confirm with user
+    const confirmed = confirm(`Auto-add ${opportunitiesToAdd.length} top opportunities to WTB orders?`);
+    if (!confirmed) return;
+    
+    showMessage(`Auto-adding ${opportunitiesToAdd.length} top opportunities...`, 'success');
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const opportunity of opportunitiesToAdd) {
+        try {
+            await createWTBOrder(opportunity);
+            successCount++;
+            // Small delay to avoid overwhelming the API
+            await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+            console.error(`Error auto-adding ${opportunity.itemName}:`, error);
+            errorCount++;
+        }
+    }
+    
+    // Show results
+    if (successCount > 0) {
+        showMessage(`Successfully auto-added ${successCount} WTB orders${errorCount > 0 ? ` (${errorCount} failed)` : ''}`, 'success');
+    } else {
+        showMessage(`Failed to auto-add any WTB orders (${errorCount} errors)`, 'error');
+    }
+    
+    // Refresh the pending items display
+    await fetchMyWTBOrders();
+    updateTradingWorkflowUI();
+}
+
+async function checkAuthStatusSimple() {
+    try {
+        const response = await fetch('/auth/status', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Auth status check error:', error);
+        return { logged_in: false };
     }
 }
 

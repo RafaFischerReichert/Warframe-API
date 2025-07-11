@@ -162,22 +162,41 @@ def test_trading_delete_all_wtb_orders_endpoint():
     
     # Mock the auth status with username
     with patch('backend.proxy_server.get_auth_status', return_value={'logged_in': True, 'username': 'test_user'}):
-        # Mock urllib.request.Request and urlopen for the DELETE request
+        # Mock urllib.request.Request and urlopen for the fetch and delete requests
         with patch('urllib.request.Request') as mock_request:
             with patch('urllib.request.urlopen') as mock_urlopen:
-                mock_response = MagicMock()
-                mock_response.status = 200
-                mock_response.headers = {'Content-Type': 'application/json'}
-                mock_response.read.return_value = b'{"success": true}'
-                mock_urlopen.return_value.__enter__.return_value = mock_response
+                # Mock the fetch response (user's orders)
+                fetch_response = MagicMock()
+                fetch_response.status = 200
+                fetch_response.read.return_value = json.dumps({
+                    'payload': {
+                        'buy_orders': [
+                            {'id': 'order1', 'item': {'en': {'item_name': 'Test Item 1'}}},
+                            {'id': 'order2', 'item': {'en': {'item_name': 'Test Item 2'}}}
+                        ]
+                    }
+                }).encode()
+                
+                # Mock the delete responses
+                delete_response = MagicMock()
+                delete_response.status = 200
+                
+                # First call returns fetch response, subsequent calls return delete responses
+                mock_urlopen.return_value.__enter__.side_effect = [fetch_response, delete_response, delete_response]
                 
                 proxy_server.ProxyHandler.handle_delete_all_wtb_orders_endpoint(handler, post_data)
                 
-                # Verify DELETE request was made to the correct URL
-                mock_request.assert_called_once()
-                call_args = mock_request.call_args
-                assert 'test_user' in call_args[0][0], 'Should include username in URL'
-                assert call_args[1]['method'] == 'DELETE', 'Should use DELETE method'
+                # Verify requests were made (fetch + 2 deletes)
+                assert mock_request.call_count >= 3, 'Should make fetch request plus delete requests'
+                
+                # Check that fetch request was made
+                fetch_call = mock_request.call_args_list[0]
+                assert 'test_user' in fetch_call[0][0], 'Should include username in fetch URL'
+                
+                # Check that delete requests were made
+                delete_calls = mock_request.call_args_list[1:]
+                for call in delete_calls:
+                    assert call[1]['method'] == 'DELETE', 'Should use DELETE method for order deletion'
 
 def test_trading_delete_all_wtb_orders_endpoint_not_logged_in():
     # Test delete all WTB orders when not logged in
@@ -200,6 +219,188 @@ def test_trading_delete_all_wtb_orders_endpoint_no_username():
         proxy_server.ProxyHandler.handle_delete_all_wtb_orders_endpoint(handler, post_data)
         # Verify 400 response was sent
         handler.send_response.assert_called_with(400)
+
+def test_trading_create_wtb_endpoint_bad_item_id():
+    # Test WTB order creation with a problematic item ID
+    handler = MagicMock()
+    post_data = json.dumps({
+        'item_id': '5655c4e5b66f832e25b8ce7b',  # The problematic item ID
+        'price': 21,
+        'quantity': 1
+    }).encode('utf-8')
+    
+    # Mock the auth status
+    with patch('backend.proxy_server.get_auth_status', return_value={'logged_in': True}):
+        # Mock the proxy_post_request method on the handler instance
+        from urllib.error import HTTPError
+        error_response = json.dumps({
+            'error': 'Invalid item ID',
+            'message': 'The provided item ID is not valid'
+        }).encode()
+        http_error = HTTPError(
+            'https://api.warframe.market/v1/profile/orders', 
+            400, 
+            'Bad Request', 
+            {}, 
+            error_response
+        )
+        handler.proxy_post_request = MagicMock(side_effect=http_error)
+        
+        proxy_server.ProxyHandler.handle_create_wtb_endpoint(handler, post_data)
+        
+        # Verify proxy_post_request was called with the correct data
+        handler.proxy_post_request.assert_called_once()
+        call_args = handler.proxy_post_request.call_args
+        assert 'profile/orders' in call_args[0][0], 'Should attempt order creation'
+        
+        # Verify the order payload contains the problematic item ID
+        order_data = json.loads(call_args[0][1].decode('utf-8'))
+        assert order_data['item'] == '5655c4e5b66f832e25b8ce7b', 'Should use the problematic item ID'
+        
+        # Verify the error response was properly handled (500 due to proxy error)
+        handler.send_response.assert_called_with(500)
+
+def test_trading_create_wtb_endpoint_item_not_found():
+    # Test WTB order creation when item details can't be fetched
+    handler = MagicMock()
+    post_data = json.dumps({
+        'item_id': 'invalid_item_id_999',
+        'price': 21,
+        'quantity': 1
+    }).encode('utf-8')
+    
+    # Mock the auth status
+    with patch('backend.proxy_server.get_auth_status', return_value={'logged_in': True}):
+        # Mock the proxy_post_request method on the handler instance
+        # Create a fresh mock that doesn't raise an exception
+        handler.proxy_post_request = MagicMock()
+        handler.proxy_post_request.return_value = None  # proxy_post_request doesn't return anything
+        
+        proxy_server.ProxyHandler.handle_create_wtb_endpoint(handler, post_data)
+        
+        # Verify proxy_post_request was called (the main flow continues)
+        handler.proxy_post_request.assert_called_once()
+        call_args = handler.proxy_post_request.call_args
+        assert 'profile/orders' in call_args[0][0], 'Should attempt order creation'
+        
+        # Verify the order payload contains the invalid item ID
+        order_data = json.loads(call_args[0][1].decode('utf-8'))
+        assert order_data['item'] == 'invalid_item_id_999', 'Should use the invalid item ID'
+        
+        # Note: send_response is handled by proxy_post_request, not directly by handle_create_wtb_endpoint
+        # So we don't check send_response here
+
+def test_trading_create_wtb_endpoint_debug_item_details():
+    # Test the debug item details fetching functionality when 400 error occurs
+    handler = MagicMock()
+    post_data = json.dumps({
+        'item_id': 'problematic_item_id_123',
+        'price': 21,
+        'quantity': 1
+    }).encode('utf-8')
+    
+    # Mock the auth status and headers
+    with patch('backend.proxy_server.get_auth_status', return_value={'logged_in': True}):
+        with patch('backend.proxy_server.get_auth_headers', return_value={'Authorization': 'Bearer test_token'}):
+            # Mock the debug_item_details method on the handler instance (not checked here)
+            handler.debug_item_details = MagicMock()
+            
+            # Mock the proxy_post_request method on the handler instance to simulate 400 error
+            from urllib.error import HTTPError
+            error_response = json.dumps({
+                'error': 'Invalid item ID',
+                'message': 'The provided item ID is not valid'
+            }).encode()
+            
+            # Create the HTTPError that will be raised
+            http_error = HTTPError(
+                'https://api.warframe.market/v1/profile/orders', 
+                400, 
+                'Bad Request', 
+                {}, 
+                error_response
+            )
+            
+            # Make proxy_post_request raise the HTTPError
+            handler.proxy_post_request = MagicMock(side_effect=http_error)
+            
+            # Call the method
+            proxy_server.ProxyHandler.handle_create_wtb_endpoint(handler, post_data)
+            
+            # Verify proxy_post_request was called
+            handler.proxy_post_request.assert_called_once()
+            
+            # We do NOT check handler.debug_item_details here, because the real debug logic is inside
+            # the actual proxy_post_request implementation, which is not executed when mocked.
+            # This should be tested in a separate test for proxy_post_request itself.
+            
+            # Verify error response was handled (500 from Exception)
+            handler.send_response.assert_called_with(500)
+
+def test_debug_item_details_method():
+    # Test the debug_item_details method directly
+    handler = MagicMock()
+    # Attach the real method to the mock
+    handler.debug_item_details = proxy_server.ProxyHandler.debug_item_details.__get__(handler, proxy_server.ProxyHandler)
+    
+    # Mock urllib.request.Request and urlopen
+    with patch('urllib.request.Request') as mock_request:
+        with patch('urllib.request.urlopen') as mock_urlopen:
+            # Mock successful item details response
+            item_response = MagicMock()
+            item_response.status = 200
+            item_response.read.return_value = json.dumps({
+                'payload': {
+                    'item': {
+                        'id': 'correct_item_id_123',
+                        'item_name': 'Test Item',
+                        'url_name': 'test_item'
+                    }
+                }
+            }).encode()
+            
+            mock_urlopen.return_value.__enter__.return_value = item_response
+            
+            # Test successful item details fetch
+            result = handler.debug_item_details('correct_item_id_123')
+            
+            # Verify request was made
+            mock_request.assert_called()
+            call_args = mock_request.call_args
+            assert 'correct_item_id_123' in call_args[0][0], 'Should fetch item by ID'
+            
+            # Verify result
+            assert result is not None
+            assert result.get('item_name') == 'Test Item'
+            assert result.get('id') == 'correct_item_id_123'
+
+def test_debug_item_details_method_not_found():
+    # Test debug_item_details when item is not found by ID
+    handler = MagicMock()
+    # Attach the real method to the mock
+    handler.debug_item_details = proxy_server.ProxyHandler.debug_item_details.__get__(handler, proxy_server.ProxyHandler)
+    
+    # Mock urllib.request.Request and urlopen
+    with patch('urllib.request.Request') as mock_request:
+        with patch('urllib.request.urlopen') as mock_urlopen:
+            # Mock 404 response for item details
+            from urllib.error import HTTPError
+            mock_urlopen.side_effect = HTTPError(
+                'https://api.warframe.market/v1/items/invalid_id', 
+                404, 
+                'Not Found', 
+                {}, 
+                b'{"error": "Item not found"}'
+            )
+            
+            # Test item not found
+            result = handler.debug_item_details('invalid_id')
+            
+            # Verify request was made
+            mock_request.assert_called()
+            
+            # Verify result is None (not found)
+            assert result is None
 
 def test_api_cancel_analysis_endpoint():
     # Test analysis cancellation endpoint
