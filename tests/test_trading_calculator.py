@@ -221,3 +221,34 @@ def test_analyze_prime_items_mixed_order_types():
     result = calc.analyze_prime_items(all_items, orders_data)
     assert len(result) == 1, 'Should find one profitable opportunity with mixed order types'
     assert result[0]['netProfit'] == 3, 'Profit should be (lowest_sell-1) - (highest_buy+1) = 14-11 = 3'
+    
+def test_delete_all_WTB():
+    """Test the delete all WTB orders functionality"""
+    # This test would typically be in test_proxy_server.py since it tests an endpoint
+    # But since it's related to trading calculator workflow, we'll test the logic here
+    
+    # Test that the trading calculator can handle empty orders after deletion
+    calc = TradingCalculator(min_profit=5)
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    
+    # Simulate scenario where all WTB orders were deleted
+    # This should result in no trading opportunities
+    orders = [
+        {'order_type': 'sell', 'platinum': 20, 'creation_date': now},
+        # No buy orders - simulating all WTB orders deleted
+    ]
+    
+    result = calc.analyze_prime_item_orders(orders, 'Test Prime', 'test_id')
+    assert not result, 'Should not find opportunities when no buy orders exist (after WTB deletion)'
+    
+    # Test that new opportunities can be found after deletion
+    # Simulate new market conditions after WTB deletion
+    new_orders = [
+        {'order_type': 'sell', 'platinum': 15, 'creation_date': now},
+        {'order_type': 'buy', 'platinum': 5, 'creation_date': now},  # New buy order
+    ]
+    
+    result = calc.analyze_prime_item_orders(new_orders, 'Test Prime', 'test_id')
+    assert result, 'Should find new opportunities after WTB deletion and market recalculation'
+    assert result[0]['netProfit'] == 8, 'Profit should be (sell-1) - (buy+1) = 14-6 = 8' 
+    

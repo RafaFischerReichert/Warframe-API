@@ -83,6 +83,14 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('WTB orders refreshed!', 'success');
         });
     }
+    
+    // Add event listener for delete all WTB orders button
+    const deleteAllWTBBtn = document.getElementById('deleteAllWTBOrdersBtn');
+    if (deleteAllWTBBtn) {
+        deleteAllWTBBtn.addEventListener('click', async function() {
+            await deleteAllWTBOrders();
+        });
+    }
 });
 
 // Authentication status checking
@@ -1012,6 +1020,39 @@ function removeBoughtItem(itemId) {
 
 function generateItemId() {
     return 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+async function deleteAllWTBOrders() {
+    const confirmed = confirm('Are you sure you want to delete all WTB orders? This will recalculate opportunities based on the current market.');
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch('/trading/delete-all-wtb-orders', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+            showMessage('All WTB orders deleted successfully.', 'success');
+            // Clear pending items since all WTB orders are deleted
+            pendingItems = [];
+            saveTradingWorkflowData();
+            updateTradingWorkflowUI();
+            
+            // Refresh opportunities after deletion
+            await fetchMyWTBOrders();
+            updateTable();
+            
+            // Trigger a new analysis to recalculate opportunities
+            if (analyzePrimeSetsBtn && !analyzePrimeSetsBtn.disabled) {
+                showMessage('Recalculating trading opportunities...', 'success');
+                await analyzeAllPrimeSets();
+            }
+        } else {
+            showMessage(`Failed to delete WTB orders: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting all WTB orders:', error);
+        showMessage('Error deleting WTB orders. Please try again.', 'error');
+    }
 }
 
 // Initialize chart on page load

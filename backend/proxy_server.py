@@ -294,6 +294,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         elif self.path == '/trading/delete-order':
             self.handle_delete_order_endpoint(post_data)
             return
+        elif self.path == '/trading/delete-all-wtb-orders':
+            self.handle_delete_all_wtb_orders_endpoint(post_data)
+            return
         
         # Trading calculator endpoint
         elif self.path == '/api/trading-calc':
@@ -948,6 +951,92 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             error_response = json.dumps({'success': False, 'message': f'Error fetching WTB orders: {str(e)}'})
+            self.wfile.write(error_response.encode())
+
+    def handle_delete_all_wtb_orders_endpoint(self, post_data):
+        """Handle deleting all WTB orders for the logged-in user."""
+        try:
+            # Check if user is logged in
+            auth_status = get_auth_status()
+            if not auth_status.get('logged_in'):
+                self.send_response(401)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Must be logged in to delete orders'})
+                self.wfile.write(error_response.encode())
+                return
+
+            username = auth_status.get('username')
+            if not username:
+                self.send_response(400)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = json.dumps({'success': False, 'message': 'Could not determine username for profile orders'})
+                self.wfile.write(error_response.encode())
+                return
+
+            api_url = f'https://api.warframe.market/v1/profile/{username}/orders'
+            print(f"[DEBUG] Attempting to delete all WTB orders at URL: {api_url}")
+
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+
+            req = urllib.request.Request(api_url, method='DELETE')
+            req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+
+            # Add auth headers
+            auth_headers = get_auth_headers()
+            jwt_token = None
+            if auth_headers:
+                for key, value in auth_headers.items():
+                    req.add_header(key, value)
+                    if key.lower() == 'authorization' and value.lower().startswith('bearer '):
+                        jwt_token = value[7:]
+                # Also add JWT as a cookie if available
+                if jwt_token:
+                    req.add_header('Cookie', f'JWT={jwt_token}')
+                    print(f"[DEBUG] Added Cookie header for delete all: JWT={jwt_token}")
+            else:
+                print("[DEBUG] No auth headers available for DELETE all request.")
+
+            with urllib.request.urlopen(req, context=context) as response:
+                data = response.read()
+                content_type = response.headers.get('Content-Type', 'application/json')
+
+                # Transform the response for delete endpoints
+                if response.status == 200:
+                    try:
+                        # For successful deletes, return frontend-expected format
+                        transformed_response = {
+                            'success': True,
+                            'message': 'All WTB orders deleted successfully'
+                        }
+                        data = json.dumps(transformed_response).encode()
+                        content_type = 'application/json'
+                        print(f"[DEBUG] Delete all response transformed: {transformed_response}")
+                    except Exception as e:
+                        print(f"[DEBUG] Failed to transform delete all response: {e}")
+
+                self.send_response(response.status)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+                self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+        except Exception as e:
+            print(f"[ERROR] Exception in handle_delete_all_wtb_orders_endpoint: {e}")
+            traceback.print_exc()  # Print the full traceback
+            self.send_response(500)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = json.dumps({'success': False, 'message': f'Error deleting WTB orders: {str(e)}'})
             self.wfile.write(error_response.encode())
 
     def do_OPTIONS(self):

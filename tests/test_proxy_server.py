@@ -155,6 +155,52 @@ def test_trading_delete_order_endpoint():
                 # Verify DELETE request was made
                 mock_request.assert_called_once()
 
+def test_trading_delete_all_wtb_orders_endpoint():
+    # Test delete all WTB orders endpoint
+    handler = MagicMock()
+    post_data = json.dumps({}).encode('utf-8')  # No data needed for delete all
+    
+    # Mock the auth status with username
+    with patch('backend.proxy_server.get_auth_status', return_value={'logged_in': True, 'username': 'test_user'}):
+        # Mock urllib.request.Request and urlopen for the DELETE request
+        with patch('urllib.request.Request') as mock_request:
+            with patch('urllib.request.urlopen') as mock_urlopen:
+                mock_response = MagicMock()
+                mock_response.status = 200
+                mock_response.headers = {'Content-Type': 'application/json'}
+                mock_response.read.return_value = b'{"success": true}'
+                mock_urlopen.return_value.__enter__.return_value = mock_response
+                
+                proxy_server.ProxyHandler.handle_delete_all_wtb_orders_endpoint(handler, post_data)
+                
+                # Verify DELETE request was made to the correct URL
+                mock_request.assert_called_once()
+                call_args = mock_request.call_args
+                assert 'test_user' in call_args[0][0], 'Should include username in URL'
+                assert call_args[1]['method'] == 'DELETE', 'Should use DELETE method'
+
+def test_trading_delete_all_wtb_orders_endpoint_not_logged_in():
+    # Test delete all WTB orders when not logged in
+    handler = MagicMock()
+    post_data = json.dumps({}).encode('utf-8')
+    
+    # Mock the auth status to return not logged in
+    with patch('backend.proxy_server.get_auth_status', return_value={'logged_in': False}):
+        proxy_server.ProxyHandler.handle_delete_all_wtb_orders_endpoint(handler, post_data)
+        # Verify 401 response was sent
+        handler.send_response.assert_called_with(401)
+
+def test_trading_delete_all_wtb_orders_endpoint_no_username():
+    # Test delete all WTB orders when no username is available
+    handler = MagicMock()
+    post_data = json.dumps({}).encode('utf-8')
+    
+    # Mock the auth status to return logged in but no username
+    with patch('backend.proxy_server.get_auth_status', return_value={'logged_in': True}):
+        proxy_server.ProxyHandler.handle_delete_all_wtb_orders_endpoint(handler, post_data)
+        # Verify 400 response was sent
+        handler.send_response.assert_called_with(400)
+
 def test_api_cancel_analysis_endpoint():
     # Test analysis cancellation endpoint
     handler = MagicMock()
