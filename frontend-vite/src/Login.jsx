@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fetchApi } from './api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -18,11 +19,10 @@ const Login = () => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('/auth/status', {
+      const result = await fetchApi('/auth/status', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      const result = await response.json();
       if (result.logged_in) {
         setLoggedIn(true);
         setSessionAge(Math.floor(result.session_age / 60));
@@ -49,12 +49,11 @@ const Login = () => {
     setMessage('');
     setMessageType('');
     try {
-      const response = await fetch('/auth/login', {
+      const result = await fetchApi('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const result = await response.json();
       if (result.success) {
         showMessage(result.message, 'success');
         setEmail('');
@@ -72,11 +71,10 @@ const Login = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/auth/logout', {
+      const result = await fetchApi('/auth/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const result = await response.json();
       if (result.success) {
         showMessage(result.message, 'success');
         checkAuthStatus();

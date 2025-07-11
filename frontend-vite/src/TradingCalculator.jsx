@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchApi } from './api';
 
 const TradingCalculator = () => {
   // State for all inputs and workflow
@@ -20,6 +21,13 @@ const TradingCalculator = () => {
   const [jobId, setJobId] = useState(null);
   const [error, setError] = useState('');
 
+  // Add a ref to control polling
+  const pollingRef = React.useRef({ polling: false });
+
+  // Add WTB from Top Opportunities
+  const [creatingWTBId, setCreatingWTBId] = useState(null);
+  const [markingBoughtId, setMarkingBoughtId] = useState(null);
+
   // Analyze All Prime Items logic
   const handleAnalyze = async () => {
     setError('');
@@ -33,13 +41,11 @@ const TradingCalculator = () => {
     setTotalOpportunities(0);
     try {
       // Step 1: Get all items
-      const itemsResponse = await fetch('/api/items');
-      if (!itemsResponse.ok) throw new Error('Failed to fetch items');
-      const itemsData = await itemsResponse.json();
+      const itemsData = await fetchApi('/api/items');
       const allItems = itemsData.payload?.items || [];
       setProgressText('Starting backend analysis...');
       // Step 2: Start backend analysis job
-      const startJobResponse = await fetch('/api/trading-calc', {
+      const { job_id } = await fetchApi('/api/trading-calc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,8 +56,6 @@ const TradingCalculator = () => {
           batch_size: 5,
         }),
       });
-      if (!startJobResponse.ok) throw new Error('Failed to start backend analysis job');
-      const { job_id } = await startJobResponse.json();
       if (!job_id) throw new Error('No job_id returned from backend');
       setJobId(job_id);
       setProgressText('Analyzing...');
@@ -64,14 +68,25 @@ const TradingCalculator = () => {
     }
   };
 
+  // Stop Analysis logic
+  const handleStopAnalysis = async () => {
+    pollingRef.current.polling = false;
+    setProgressText('Cancelling analysis...');
+    try {
+      await fetchApi('/api/cancel-analysis', { method: 'POST' });
+    } catch (e) {
+      // Ignore errors, just stop polling
+    }
+    setShowProgress(false);
+    setAnalysisInProgress(false);
+  };
+
   // Polling function
   const pollJob = async (job_id) => {
-    let polling = true;
-    while (polling) {
+    pollingRef.current.polling = true;
+    while (pollingRef.current.polling) {
       try {
-        const resp = await fetch(`/api/trading-calc-progress?job_id=${job_id}`);
-        if (!resp.ok) throw new Error('Failed to poll job progress');
-        const data = await resp.json();
+        const data = await fetchApi(`/api/trading-calc-progress?job_id=${job_id}`);
         setPrimeSetsAnalyzed(data.progress);
         setTotalOpportunities(data.results.length);
         setOpportunities(data.results);
@@ -80,7 +95,7 @@ const TradingCalculator = () => {
         if (data.status === 'done' || data.status === 'cancelled') {
           setShowProgress(false);
           setAnalysisInProgress(false);
-          polling = false;
+          pollingRef.current.polling = false;
         } else {
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -88,10 +103,62 @@ const TradingCalculator = () => {
         setError('Error polling job progress');
         setShowProgress(false);
         setAnalysisInProgress(false);
-        polling = false;
+        pollingRef.current.polling = false;
       }
     }
   };
+
+  // Add the following handlers and state:
+  const handleCreateWTB = async (opp) => {
+    setCreatingWTBId(opp.itemId);
+    try {
+      const res = await fetchApi('/trading/create-wtb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: opp.itemId, price: opp.buyPrice, quantity: 1 }),
+      });
+      if (res.success) {
+        // Optionally refresh WTB orders
+        fetchPendingOrders();
+      }
+    } finally {
+      setCreatingWTBId(null);
+    }
+  };
+
+  const handleMarkBought = async (item) => {
+    setMarkingBoughtId(item.id);
+    try {
+      const res = await fetchApi('/trading/delete-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: item.id }),
+      });
+      if (res.success) {
+        setPendingItems((prev) => prev.filter((i) => i.id !== item.id));
+        setBoughtItems((prev) => [...prev, item]);
+      }
+    } finally {
+      setMarkingBoughtId(null);
+    }
+  };
+
+  const handleMarkSold = (item) => {
+    setBoughtItems((prev) => prev.filter((i) => i.id !== item.id));
+  };
+
+  // Add fetchPendingOrders to load WTB orders from /trading/my-wtb-orders
+  const fetchPendingOrders = async () => {
+    const res = await fetchApi('/trading/my-wtb-orders');
+    if (res.success) {
+      setPendingItems(res.orders || []);
+    }
+  };
+
+  // Call fetchPendingOrders on mount
+  useEffect(() => {
+    fetchPendingOrders();
+  }, []);
 
   return (
     <div className="container">
@@ -154,7 +221,7 @@ const TradingCalculator = () => {
           <p id="progressText" style={{ textAlign: 'center', color: '#b0b0b0', marginTop: 10 }}>{progressText}</p>
           <p id="currentItem" style={{ textAlign: 'center', color: '#00d4ff', fontSize: '0.9rem', marginTop: 5 }}>{currentItem}</p>
           <div style={{ textAlign: 'center', marginTop: 20 }}>
-            <button id="stopAnalysisBtn" className="stop-btn">Stop Analysis</button>
+            <button id="stopAnalysisBtn" className="stop-btn" onClick={handleStopAnalysis} disabled={!analysisInProgress}>Stop Analysis</button>
           </div>
         </div>
       )}
@@ -166,8 +233,8 @@ const TradingCalculator = () => {
           <span id="totalOpportunities" className="opportunities-counter">Total opportunities: {totalOpportunities}</span>
         </div>
         <div className="trading-workflow-container">
-          <div className="trading-panels-row">
-            <div className="trading-panel pending-panel">
+          <div className="orders-row">
+            <div className="orders-panel pending-orders">
               <h4 style={{ color: '#ffd700', textAlign: 'center', marginBottom: 15 }}>📋 Pending Orders</h4>
               <div className="panel-description">
                 <p style={{ fontSize: '0.9em', color: '#b0b0b0', textAlign: 'center', marginBottom: 15 }}>
@@ -182,11 +249,25 @@ const TradingCalculator = () => {
                     <p style={{ color: '#666', textAlign: 'center', fontStyle: 'italic' }}>No pending orders</p>
                   </div>
                 ) : (
-                  <div>Pending items UI here</div>
+                  <div>
+                    {pendingItems.map((item) => (
+                      <div key={item.id} className="pending-item-row">
+                        <span>{item.itemName}</span>
+                        <span>{item.buyPrice}</span>
+                        <span>{item.sellPrice}</span>
+                        <span>{item._wtbOrder && item._wtbOrder.creation_date ? (Math.round((Date.now() - new Date(item._wtbOrder.creation_date)) / (1000 * 60 * 60 * 24) * 10) / 10) : '-'}</span>
+                        <span>{item.netProfit}</span>
+                        <span>{item.totalInvestment}</span>
+                        <button onClick={() => handleMarkBought(item)} disabled={markingBoughtId === item.id}>
+                          {markingBoughtId === item.id ? 'Processing...' : 'Bought'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
-            <div className="trading-panel bought-panel">
+            <div className="orders-panel portfolio">
               <h4 style={{ color: '#00d46e', textAlign: 'center', marginBottom: 15 }}>💼 Portfolio (Bought Items)</h4>
               <div id="boughtItemsContainer" className="items-container">
                 {boughtItems.length === 0 ? (
@@ -194,7 +275,21 @@ const TradingCalculator = () => {
                     <p style={{ color: '#666', textAlign: 'center', fontStyle: 'italic' }}>No bought items</p>
                   </div>
                 ) : (
-                  <div>Bought items UI here</div>
+                  <div>
+                    {boughtItems.map((item) => (
+                      <div key={item.id} className="bought-item-row">
+                        <span>{item.itemName}</span>
+                        <span>{item.buyPrice}</span>
+                        <span>{item.sellPrice}</span>
+                        <span>{item._wtbOrder && item._wtbOrder.creation_date ? (Math.round((Date.now() - new Date(item._wtbOrder.creation_date)) / (1000 * 60 * 60 * 24) * 10) / 10) : '-'}</span>
+                        <span>{item.netProfit}</span>
+                        <span>{item.totalInvestment}</span>
+                        <button onClick={() => handleMarkSold(item)}>
+                          Sold
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
               {/* Profit Chart placeholder */}
@@ -240,7 +335,11 @@ const TradingCalculator = () => {
                         <td>{opp._wtbOrder && opp._wtbOrder.creation_date ? (Math.round((Date.now() - new Date(opp._wtbOrder.creation_date)) / (1000 * 60 * 60 * 24) * 10) / 10) : '-'}</td>
                         <td>{opp.netProfit}</td>
                         <td>{opp.totalInvestment}</td>
-                        <td><button disabled>Coming Soon</button></td>
+                        <td>
+                          <button onClick={() => handleCreateWTB(opp)} disabled={creatingWTBId === opp.itemId}>
+                            {creatingWTBId === opp.itemId ? 'Adding...' : 'Create WTB'}
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}

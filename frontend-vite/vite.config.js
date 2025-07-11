@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:5000',
-      '/auth': 'http://localhost:5000',
-      '/trading': 'http://localhost:5000',
+      '/api': 'http://localhost:8000',
+      '/auth': 'http://localhost:8000',
+      '/trading': 'http://localhost:8000',
     },
   },
 })
