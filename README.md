@@ -50,6 +50,7 @@ A collection of tools for interacting with the Warframe Market API, including a 
 
 ### Prerequisites
 - Python 3.x
+- Node.js (for frontend)
 - Modern web browser
 
 ### Installation & Running
@@ -58,10 +59,13 @@ A collection of tools for interacting with the Warframe Market API, including a 
    ```bash
    python -m backend.proxy_server
    ```
-3. **Open your browser** and go to:
+3. **Start the Vite React frontend:**
+   ```bash
+   cd frontend-vite
+   npm install
+   npm run dev
    ```
-   http://localhost:8000
-   ```
+4. **Open your browser** and go to the address shown by Vite (usually `http://localhost:5173`).
 
 ---
 
@@ -102,15 +106,8 @@ The application includes configurable request rates to avoid API rate limiting:
 REQUESTS_PER_SECOND = 5  # Adjust this value (recommended: 3-10)
 ```
 
-**Frontend (trading-calculator.js):**
-```javascript
-const CONFIG = {
-    BATCH_SIZE: 5,           // Items processed simultaneously
-    BATCH_DELAY: 200,        // Delay between batches (ms)
-    ITEM_DELAY: 200,         // Delay between items (ms)
-    MAX_OPPORTUNITIES: 20    // Max results to show
-};
-```
+**Frontend (Vite React):**
+- Configuration is handled in the React app and backend.
 
 **Speed Tuning Guide:**
 - **Conservative:** 3 requests/second (recommended for server safety)
@@ -144,7 +141,7 @@ The application includes comprehensive rate limiting protection:
 
 ## Limitations & Known Issues
 
-- **No Order Creation:** This tool does not create or manage orders on Warframe.market
+- **No Order Creation:** This tool does not create or manage orders on Warframe.market (feature coming soon)
 - **Some Orders Missing:** Some orders visible on the Warframe.market website (notably those with a special icon next to the profile picture) may not appear in this app. These orders are not present in the public API and cannot be fetched programmatically
 - **API Rate Limits:** The tool is rate-limited to avoid being blocked by Warframe.market. Large scans may take several minutes
 - **Data Freshness:** Results are only as fresh as the public API allows. Some stale orders may appear if not yet purged from the API
@@ -155,10 +152,7 @@ The application includes comprehensive rate limiting protection:
 ## Project Structure (Refactored)
 
 - `backend/` — Python backend code (auth_handler.py, proxy_server.py)
-- `frontend/` — All frontend code
-    - `index.html`, `login.html`, `trading-calculator.html`
-    - `js/` — JavaScript files
-    - `css/` — CSS files
+- `frontend-vite/` — Vite React frontend (all UI code)
 - `data/` — Data files (syndicate_items.json, SYNDICATE_ITEMS_README.md)
 - `tests/` — (For future test files)
 
@@ -173,11 +167,13 @@ All file references in HTML have been updated to match this structure.
 - `POST /auth/login` - Login with credentials
 - `POST /auth/logout` - Logout and clear session
 - `GET /rate-limit-status` - Check rate limiting status
+- `POST /api/trading-calc` - Start trading analysis job
+- `GET /api/trading-calc-progress?job_id=...` - Poll trading analysis progress/results
 
-### Frontend Pages
-- `/` - Syndicate search (index.html)
-- `/trading-calculator.html` - Trading calculator
-- `/login.html` - Authentication page
+### Frontend
+- `/` - Login (React)
+- `/syndicate` - Syndicate Analysis (React)
+- `/trading` - Trading Calculator (React)
 
 ---
 

@@ -40,3 +40,7 @@ build
 npm-debug.log
 .env
 .DS_Store
+
+# Ignore old frontend and Vite dependencies
+/frontend/
+/frontend-vite/node_modules/
