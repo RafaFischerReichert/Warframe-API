@@ -311,4 +311,40 @@ button:focus-visible {
 .pending-item-row button, .bought-item-row button {
   margin-left: 16px;
 }
+
+/* Items container with scrollable content */
+.items-container {
+  width: 100%;
+  max-height: 400px; /* Fixed height to show ~10 items */
+  overflow-y: auto;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #1a1a1a;
+  padding: 8px;
+}
+
+.items-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.items-container::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+.items-container::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.items-container::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Empty state styling */
+.empty-state {
+  padding: 20px;
+  text-align: center;
+}
+
 /* --- End merged legacy style.css --- */

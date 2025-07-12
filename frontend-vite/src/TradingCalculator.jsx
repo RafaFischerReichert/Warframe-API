@@ -27,6 +27,7 @@ const TradingCalculator = () => {
   // Add WTB from Top Opportunities
   const [creatingWTBId, setCreatingWTBId] = useState(null);
   const [markingBoughtId, setMarkingBoughtId] = useState(null);
+  const [deletingAllWTB, setDeletingAllWTB] = useState(false);
 
   // Analyze All Prime Items logic
   const handleAnalyze = async () => {
@@ -129,22 +130,94 @@ const TradingCalculator = () => {
   const handleMarkBought = async (item) => {
     setMarkingBoughtId(item.id);
     try {
-      const res = await fetchApi('/trading/delete-order', {
+      // Step 1: Delete the WTB order
+      const deleteRes = await fetchApi('/trading/delete-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: item.id }),
       });
-      if (res.success) {
-        setPendingItems((prev) => prev.filter((i) => i.id !== item.id));
-        setBoughtItems((prev) => [...prev, item]);
+      
+      if (deleteRes.success) {
+        // Step 2: Create a WTS order with a calculated sell price
+        // For now, we'll use the buy price + 10% as a simple sell price
+        const sellPrice = Math.ceil(item.platinum * 1.1);
+        
+        const wtsRes = await fetchApi('/trading/create-wts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: item.item.id, // The item ID is nested in the order structure
+            price: sellPrice,
+            quantity: item.quantity || 1
+          }),
+        });
+        
+        if (wtsRes.success) {
+          // Update the item with the WTS order info and add calculated fields
+          const updatedItem = {
+            ...item,
+            wtsOrderId: wtsRes.order_id,
+            wtsCreated: true,
+            buyPrice: item.platinum,
+            sellPrice: sellPrice,
+            netProfit: sellPrice - item.platinum,
+            totalInvestment: item.platinum
+          };
+          
+          setPendingItems((prev) => prev.filter((i) => i.id !== item.id));
+          setBoughtItems((prev) => [...prev, updatedItem]);
+          
+          // Show success message
+          alert(`${item.itemName} marked as bought and WTS order created for ${sellPrice} platinum`);
+        } else {
+          // WTS creation failed, but WTB was deleted
+          const updatedItem = {
+            ...item,
+            buyPrice: item.platinum,
+            sellPrice: '-',
+            netProfit: '-',
+            totalInvestment: item.platinum
+          };
+          setPendingItems((prev) => prev.filter((i) => i.id !== item.id));
+          setBoughtItems((prev) => [...prev, updatedItem]);
+          alert(`Item marked as bought, but failed to create WTS order: ${wtsRes.message}`);
+        }
+      } else {
+        alert(`Failed to delete WTB order: ${deleteRes.message}`);
       }
+    } catch (error) {
+      alert(`Error: ${error.message || 'Failed to process item'}`);
     } finally {
       setMarkingBoughtId(null);
     }
   };
 
-  const handleMarkSold = (item) => {
-    setBoughtItems((prev) => prev.filter((i) => i.id !== item.id));
+  const handleMarkSold = async (item) => {
+    try {
+      // If there's a WTS order, delete it
+      if (item.wtsOrderId) {
+        const deleteRes = await fetchApi('/trading/delete-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: item.wtsOrderId }),
+        });
+        
+        if (deleteRes.success) {
+          alert(`Item marked as sold and WTS order deleted`);
+        } else {
+          alert(`Item marked as sold, but failed to delete WTS order: ${deleteRes.message}`);
+        }
+      } else {
+        alert(`Item marked as sold`);
+      }
+      
+      // Remove from bought items regardless
+      setBoughtItems((prev) => prev.filter((i) => i.id !== item.id));
+    } catch (error) {
+      alert(`Error marking item as sold: ${error.message || 'Failed to process'}`);
+      // Still remove from bought items even if WTS deletion fails
+      setBoughtItems((prev) => prev.filter((i) => i.id !== item.id));
+    }
   };
 
   // Add fetchPendingOrders to load WTB orders from /trading/my-wtb-orders
@@ -152,6 +225,33 @@ const TradingCalculator = () => {
     const res = await fetchApi('/trading/my-wtb-orders');
     if (res.success) {
       setPendingItems(res.orders || []);
+    }
+  };
+
+  // Handle delete all WTB orders
+  const handleDeleteAllWTB = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL your WTB orders? This action cannot be undone.')) {
+      return;
+    }
+    
+    setDeletingAllWTB(true);
+    try {
+      const res = await fetchApi('/trading/delete-all-wtb-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.success) {
+        // Clear pending items from state
+        setPendingItems([]);
+        alert(`Success: ${res.message}`);
+      } else {
+        alert(`Error: ${res.message || 'Failed to delete WTB orders'}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error.message || 'Failed to delete WTB orders'}`);
+    } finally {
+      setDeletingAllWTB(false);
     }
   };
 
@@ -240,8 +340,15 @@ const TradingCalculator = () => {
                 <p style={{ fontSize: '0.9em', color: '#b0b0b0', textAlign: 'center', marginBottom: 15 }}>
                   Items you've created WTB orders for. Click "Bought" when you acquire the item.
                 </p>
-                <button id="refreshWTBOrdersBtn" style={{ marginBottom: 10 }}>Refresh My WTB Orders</button>
-                <button id="deleteAllWTBOrdersBtn" style={{ marginBottom: 10, marginLeft: 10, background: '#ff6b6b', borderColor: '#ff6b6b' }}>Delete All WTB Orders</button>
+                <button id="refreshWTBOrdersBtn" style={{ marginBottom: 10 }} onClick={fetchPendingOrders}>Refresh My WTB Orders</button>
+                <button 
+                  id="deleteAllWTBOrdersBtn" 
+                  style={{ marginBottom: 10, marginLeft: 10, background: '#ff6b6b', borderColor: '#ff6b6b' }}
+                  onClick={handleDeleteAllWTB}
+                  disabled={deletingAllWTB}
+                >
+                  {deletingAllWTB ? 'Deleting...' : 'Delete All WTB Orders'}
+                </button>
               </div>
               <div id="pendingItemsContainer" className="items-container">
                 {pendingItems.length === 0 ? (
@@ -252,12 +359,12 @@ const TradingCalculator = () => {
                   <div>
                     {pendingItems.map((item) => (
                       <div key={item.id} className="pending-item-row">
-                        <span>{item.itemName}</span>
-                        <span>{item.buyPrice}</span>
-                        <span>{item.sellPrice}</span>
-                        <span>{item._wtbOrder && item._wtbOrder.creation_date ? (Math.round((Date.now() - new Date(item._wtbOrder.creation_date)) / (1000 * 60 * 60 * 24) * 10) / 10) : '-'}</span>
-                        <span>{item.netProfit}</span>
-                        <span>{item.totalInvestment}</span>
+                        <span>{item.itemName || 'Unknown Item'}</span>
+                        <span>{item.platinum || '-'}</span>
+                        <span>-</span>
+                        <span>{item.creation_date ? (Math.round((Date.now() - new Date(item.creation_date)) / (1000 * 60 * 60 * 24) * 10) / 10) : '-'}</span>
+                        <span>-</span>
+                        <span>-</span>
                         <button onClick={() => handleMarkBought(item)} disabled={markingBoughtId === item.id}>
                           {markingBoughtId === item.id ? 'Processing...' : 'Bought'}
                         </button>
@@ -269,6 +376,11 @@ const TradingCalculator = () => {
             </div>
             <div className="orders-panel portfolio">
               <h4 style={{ color: '#00d46e', textAlign: 'center', marginBottom: 15 }}>💼 Portfolio (Bought Items)</h4>
+              <div className="panel-description">
+                <p style={{ fontSize: '0.9em', color: '#b0b0b0', textAlign: 'center', marginBottom: 15 }}>
+                  Items you've bought. WTS orders are automatically created when you mark items as bought.
+                </p>
+              </div>
               <div id="boughtItemsContainer" className="items-container">
                 {boughtItems.length === 0 ? (
                   <div className="empty-state">
@@ -278,15 +390,22 @@ const TradingCalculator = () => {
                   <div>
                     {boughtItems.map((item) => (
                       <div key={item.id} className="bought-item-row">
-                        <span>{item.itemName}</span>
-                        <span>{item.buyPrice}</span>
-                        <span>{item.sellPrice}</span>
-                        <span>{item._wtbOrder && item._wtbOrder.creation_date ? (Math.round((Date.now() - new Date(item._wtbOrder.creation_date)) / (1000 * 60 * 60 * 24) * 10) / 10) : '-'}</span>
-                        <span>{item.netProfit}</span>
-                        <span>{item.totalInvestment}</span>
-                        <button onClick={() => handleMarkSold(item)}>
-                          Sold
-                        </button>
+                        <span>{item.itemName || 'Unknown Item'}</span>
+                        <span>{item.buyPrice || '-'}</span>
+                        <span>{item.sellPrice || '-'}</span>
+                        <span>{item.creation_date ? (Math.round((Date.now() - new Date(item.creation_date)) / (1000 * 60 * 60 * 24) * 10) / 10) : '-'}</span>
+                        <span>{item.netProfit || '-'}</span>
+                        <span>{item.totalInvestment || '-'}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {item.wtsCreated && (
+                            <span style={{ fontSize: '0.8em', color: '#00d46e', fontWeight: 'bold' }}>
+                              WTS Active
+                            </span>
+                          )}
+                          <button onClick={() => handleMarkSold(item)}>
+                            Sold
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
