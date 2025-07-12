@@ -4,6 +4,7 @@ Simple proxy server to handle CORS for Warframe Market API
 """
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
+import urllib.error
 from urllib.parse import urlparse, parse_qs
 import json
 import ssl
@@ -14,6 +15,7 @@ import uuid
 from .trading_calculator import TradingCalculator
 import urllib.request
 import traceback
+from backend.wtb_metadata_store import set_order_metadata, get_all_metadata_for_user, delete_order_metadata, delete_all_metadata_for_user
 
 # ===== CONFIGURATION =====
 REQUESTS_PER_SECOND = 5  # Change from 3 to 5
@@ -547,6 +549,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
             item_id = data.get('item_id', '')
             price = data.get('price', 0)
             quantity = data.get('quantity', 1)
+            item_name = data.get('item_name', '')
+            sell_price = data.get('sell_price', None)
+            net_profit = data.get('net_profit', None)
+            total_investment = data.get('total_investment', None)
             
             if not item_id or price <= 0:
                 self.send_response(400)
@@ -556,13 +562,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 error_response = json.dumps({'success': False, 'message': 'Item ID and valid price are required'})
                 self.wfile.write(error_response.encode())
                 return
-            
-            # Debug: Store item info for potential error debugging
-            debug_item_info = {
-                'item_id': item_id,
-                'price': price,
-                'quantity': quantity
-            }
             
             # Check if user is logged in
             auth_status = get_auth_status()
@@ -574,6 +573,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 error_response = json.dumps({'success': False, 'message': 'Must be logged in to create orders'})
                 self.wfile.write(error_response.encode())
                 return
+            username = auth_status.get('username')
             
             # Create WTB order via Warframe Market API
             order_data = {
@@ -585,10 +585,59 @@ class ProxyHandler(BaseHTTPRequestHandler):
             }
             print(f"[DEBUG] Order payload: {order_data}")
             
-            # Proxy to Warframe Market API
+            # Proxy to Warframe Market API and intercept the response to store metadata
             api_url = 'https://api.warframe.market/v1/profile/orders'
-            self.proxy_post_request(api_url, json.dumps(order_data).encode())
-            
+            import ssl
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            import urllib.request
+            req = urllib.request.Request(api_url, data=json.dumps(order_data).encode())
+            req.add_header('Content-Type', 'application/json')
+            req.add_header('Accept', 'application/json')
+            req.add_header('User-Agent', 'Warframe-Market-Proxy/1.0')
+            # Add Authorization header if present
+            auth_headers = self.headers.get('Authorization')
+            if auth_headers:
+                req.add_header('Authorization', auth_headers)
+            else:
+                from backend.auth_handler import get_auth_headers
+                auth_headers_dict = get_auth_headers()
+                jwt_token = None
+                if auth_headers_dict:
+                    for key, value in auth_headers_dict.items():
+                        req.add_header(key, value)
+                        if key.lower() == 'authorization' and value.lower().startswith('bearer '):
+                            jwt_token = value[7:]
+                    if jwt_token:
+                        req.add_header('Cookie', f'JWT={jwt_token}')
+            with urllib.request.urlopen(req, context=context) as response:
+                data_bytes = response.read()
+                content_type = response.headers.get('Content-Type', 'application/json')
+                api_response = json.loads(data_bytes.decode('utf-8'))
+                order_id = api_response.get('payload', {}).get('order', {}).get('id')
+                # Store metadata if order_id is present
+                if order_id:
+                    set_order_metadata(username, order_id, {
+                        'item_id': item_id,
+                        'item_name': item_name,
+                        'buy_price': price,
+                        'sell_price': sell_price,
+                        'net_profit': net_profit,
+                        'total_investment': total_investment,
+                        'quantity': quantity
+                    })
+                # Return transformed response
+                self.send_response(response.status)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Type', content_type)
+                self.end_headers()
+                transformed_response = {
+                    'success': True,
+                    'order_id': order_id,
+                    'message': 'Order created successfully'
+                }
+                self.wfile.write(json.dumps(transformed_response).encode())
         except json.JSONDecodeError:
             self.send_response(400)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -597,11 +646,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
             error_response = json.dumps({'success': False, 'message': 'Invalid JSON data'})
             self.wfile.write(error_response.encode())
         except Exception as e:
+            print(f"[ERROR] Exception creating WTB order: {e}")
             self.send_response(500)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            error_response = json.dumps({'success': False, 'message': f'Server error: {str(e)}'})
+            error_response = json.dumps({'success': False, 'message': f'Error creating WTB order: {str(e)}'})
             self.wfile.write(error_response.encode())
 
     def handle_create_wts_endpoint(self, post_data):
@@ -661,7 +711,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.wfile.write(error_response.encode())
 
     def handle_delete_order_endpoint(self, post_data):
-        """Handle deleting orders"""
+        """Handle deleting orders and remove metadata if WTB"""
         try:
             data = json.loads(post_data.decode('utf-8'))
             print(f"[DEBUG] Received delete order data: {data}")
@@ -686,6 +736,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 error_response = json.dumps({'success': False, 'message': 'Must be logged in to delete orders'})
                 self.wfile.write(error_response.encode())
                 return
+            username = auth_status.get('username')
             
             # Delete order via Warframe Market API
             api_url = f'https://api.warframe.market/v1/profile/orders/{order_id}'
@@ -723,6 +774,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 data = response.read()
                 content_type = response.headers.get('Content-Type', 'application/json')
                 
+                # Remove metadata for this order
+                delete_order_metadata(username, order_id)
+                
                 # Transform the response for delete endpoints
                 if response.status == 200:
                     try:
@@ -745,7 +799,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-Length', str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
-            
         except json.JSONDecodeError:
             self.send_response(400)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -947,7 +1000,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({'success': True, 'message': 'Analysis cancelled.'}).encode())
 
     def handle_my_wtb_orders_endpoint(self):
-        """Fetch the logged-in user's current WTB (buy) orders from Warframe Market and return as JSON."""
+        """Fetch the logged-in user's current WTB (buy) orders from Warframe Market and return as JSON, merging metadata."""
         # Check authentication
         auth_headers = get_auth_headers()
         auth_status = get_auth_status()
@@ -994,11 +1047,33 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 orders_json = json.loads(data.decode('utf-8'))
                 buy_orders = orders_json.get('payload', {}).get('buy_orders', [])
                 print(f"[DEBUG] Found {len(buy_orders)} WTB orders for user")
+                
+                # Merge metadata
+                metadata = get_all_metadata_for_user(username)
+                enhanced_orders = []
+                for order in buy_orders:
+                    order_id = order.get('id')
+                    meta = metadata.get(order_id, {}) if metadata else {}
+                    # Merge fields, prefer live order fields for id, platinum, etc.
+                    merged = {
+                        'id': order.get('id'),
+                        'item_id': meta.get('item_id', order.get('item', {}).get('id')),
+                        'itemName': meta.get('item_name', 'Unknown Item'),
+                        'buyPrice': meta.get('buy_price', order.get('platinum')),
+                        'sellPrice': meta.get('sell_price', None),
+                        'netProfit': meta.get('net_profit', None),
+                        'totalInvestment': meta.get('total_investment', None),
+                        'quantity': meta.get('quantity', order.get('quantity', 1)),
+                        'creation_date': order.get('creation_date'),
+                        'platinum': order.get('platinum'),
+                    }
+                    enhanced_orders.append(merged)
+                
                 self.send_response(200)
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True, 'orders': buy_orders}).encode())
+                self.wfile.write(json.dumps({'success': True, 'orders': enhanced_orders}).encode())
         except Exception as e:
             print(f"[ERROR] Exception in handle_my_wtb_orders_endpoint: {e}")
             traceback.print_exc()  # Print the full traceback
@@ -1010,7 +1085,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.wfile.write(error_response.encode())
 
     def handle_delete_all_wtb_orders_endpoint(self, post_data):
-        """Handle deleting all WTB orders for the logged-in user."""
+        """Handle deleting all WTB orders for the logged-in user and remove all metadata."""
         try:
             # Check if user is logged in
             auth_status = get_auth_status()
@@ -1061,7 +1136,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
                         jwt_token = value[7:]
                 if jwt_token:
                     fetch_req.add_header('Cookie', f'JWT={jwt_token}')
-            
             with urllib.request.urlopen(fetch_req, context=context) as response:
                 data = response.read()
                 orders_json = json.loads(data.decode('utf-8'))
@@ -1076,6 +1150,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     self.end_headers()
                     response_data = json.dumps({'success': True, 'message': 'No WTB orders found to delete'})
                     self.wfile.write(response_data.encode())
+                    # Remove all metadata for this user
+                    delete_all_metadata_for_user(username)
                     return
                 
                 # Delete each WTB order individually
@@ -1099,18 +1175,22 @@ class ProxyHandler(BaseHTTPRequestHandler):
                             delete_req.add_header(key, value)
                         if jwt_token:
                             delete_req.add_header('Cookie', f'JWT={jwt_token}')
-                    
                     try:
                         with urllib.request.urlopen(delete_req, context=context) as delete_response:
                             if delete_response.status == 200:
                                 deleted_count += 1
                                 print(f"[DEBUG] Successfully deleted order {order_id}")
+                                # Remove metadata for this order
+                                delete_order_metadata(username, order_id)
                             else:
                                 failed_count += 1
                                 print(f"[DEBUG] Failed to delete order {order_id}, status: {delete_response.status}")
                     except Exception as e:
                         failed_count += 1
                         print(f"[DEBUG] Exception deleting order {order_id}: {e}")
+                
+                # Remove all metadata for this user after all deletes
+                delete_all_metadata_for_user(username)
                 
                 # Return results
                 self.send_response(200)
@@ -1130,7 +1210,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     })
                 
                 self.wfile.write(response_data.encode())
-
         except Exception as e:
             print(f"[ERROR] Exception in handle_delete_all_wtb_orders_endpoint: {e}")
             traceback.print_exc()  # Print the full traceback

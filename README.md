@@ -1,6 +1,8 @@
 # Warframe Market API Tools
 
-A collection of tools for interacting with the Warframe Market API, including a Prime Items Trading Analyzer and authentication system.
+A collection of tools for interacting with the Warframe Market API, including a Prime Items Trading Analyzer, authentication system, and order management. Available as both a web app and a native desktop application using Tauri.
+
+> **🚀 New to the project?** Check out the [Quick Start Guide](QUICK_START.md) to get up and running in minutes!
 
 ---
 
@@ -37,6 +39,14 @@ A collection of tools for interacting with the Warframe Market API, including a 
 - **Stop Analysis:**
   - Cancel a long scan at any time with the "Stop Analysis" button
 
+### 🛒 WTB Order Management
+- **Create WTB Orders:** One-click creation of WTB orders from top opportunities
+- **Order Lifecycle Management:** Track orders from pending → bought → sold
+- **Portfolio Tracking:** Maintain a local portfolio of bought items
+- **Pending Orders Panel:** View and manage active WTB orders
+- **Portfolio Panel:** Track bought items and mark them as sold
+- **Real-time Updates:** Order status updates reflect immediately in the UI
+
 ### 🔍 Syndicate Mod Search
 - **Search syndicate mods** by syndicate name
 - **Real-time pricing** from Warframe Market
@@ -44,16 +54,23 @@ A collection of tools for interacting with the Warframe Market API, including a 
 - **Time range filtering** for order age
 - **Order mode selection** (online only vs all orders)
 
+### 🖥️ Desktop Application (Tauri)
+- **Native Desktop App:** Cross-platform desktop application
+- **Offline Capable:** Works without internet connection for local features
+- **System Integration:** Native window controls and system tray support
+- **Fast Performance:** Rust-based backend with React frontend
+
 ---
 
 ## Setup Instructions
 
 ### Prerequisites
 - Python 3.x
-- Node.js (for frontend)
-- Modern web browser
+- Node.js 18+ (for frontend)
+- Rust (for Tauri desktop app)
+- Modern web browser (for web version)
 
-### Installation & Running
+### Web Application Setup
 1. **Clone or download this repository.**
 2. **Start the Python proxy server:**
    ```bash
@@ -66,6 +83,32 @@ A collection of tools for interacting with the Warframe Market API, including a 
    npm run dev
    ```
 4. **Open your browser** and go to the address shown by Vite (usually `http://localhost:5173`).
+
+### Desktop Application Setup (Tauri)
+1. **Install Rust and Tauri prerequisites:**
+   ```bash
+   # Install Rust
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   
+   # Install Tauri CLI
+   cargo install tauri-cli
+   ```
+2. **Build and run the desktop app:**
+   ```bash
+   cd frontend-vite
+   npm install
+   npm run tauri dev
+   ```
+3. **For production builds:**
+   ```bash
+   npm run tauri build
+   ```
+
+### Environment Configuration
+Create a `.env` file in the `frontend-vite` directory:
+```env
+VITE_API_URL=http://localhost:8000
+```
 
 ---
 
@@ -86,8 +129,21 @@ A collection of tools for interacting with the Warframe Market API, including a 
 3. **Watch the progress bar** and see the top opportunities populate the table
 4. **Review results:**
    - Buy/Sell prices, order age, ROI, net profit, and more
-5. **Stop analysis** at any time with the "Stop Analysis" button
-6. **Clear the table** with the "Clear Table" button
+5. **Create WTB Orders:**
+   - Click "Create WTB Order" on any opportunity
+   - Orders appear in the "Pending Orders" panel
+6. **Manage Orders:**
+   - Mark pending orders as "Bought" when you purchase items
+   - Move bought items to "Portfolio" and mark as "Sold" when sold
+7. **Stop analysis** at any time with the "Stop Analysis" button
+8. **Clear the table** with the "Clear Table" button
+
+### Order Management Workflow
+1. **Create WTB Orders** from top opportunities
+2. **Track Pending Orders** in the left panel
+3. **Mark as Bought** when you purchase items
+4. **Move to Portfolio** to track owned items
+5. **Mark as Sold** when you sell items for profit
 
 ### Syndicate Search
 1. **Enter a syndicate name** (e.g., "Steel Meridian", "Red Veil")
@@ -146,17 +202,19 @@ The application includes comprehensive rate limiting protection:
 - **API Rate Limits:** The tool is rate-limited to avoid being blocked by Warframe.market. Large scans may take several minutes
 - **Data Freshness:** Results are only as fresh as the public API allows. Some stale orders may appear if not yet purged from the API
 - **Authentication Scope:** Currently, authentication is separate from trading features. Future updates may integrate authenticated API calls
+- **Portfolio Persistence:** Portfolio and order data is currently stored in frontend state only. Data will be lost on page refresh (backend persistence coming soon)
 
 ---
 
-## Project Structure (Refactored)
+## Project Structure
 
-- `backend/` — Python backend code (auth_handler.py, proxy_server.py)
-- `frontend-vite/` — Vite React frontend (all UI code)
+- `backend/` — Python backend code (auth_handler.py, proxy_server.py, trading_calculator.py)
+- `frontend-vite/` — Vite React frontend with Tauri integration
+  - `src/` — React components and application logic
+  - `src-tauri/` — Tauri configuration and Rust backend
+  - `public/` — Static assets
 - `data/` — Data files (syndicate_items.json, SYNDICATE_ITEMS_README.md)
-- `tests/` — (For future test files)
-
-All file references in HTML have been updated to match this structure.
+- `tests/` — Test files for backend components
 
 ---
 
@@ -169,11 +227,41 @@ All file references in HTML have been updated to match this structure.
 - `GET /rate-limit-status` - Check rate limiting status
 - `POST /api/trading-calc` - Start trading analysis job
 - `GET /api/trading-calc-progress?job_id=...` - Poll trading analysis progress/results
+- `POST /api/orders/wtb` - Create WTB order
+- `POST /api/orders/wts` - Create WTS order
+- `DELETE /api/orders/:order_id` - Delete order
+- `GET /api/orders/user` - Get user's orders
 
-### Frontend
+### Frontend Routes
 - `/` - Login (React)
 - `/syndicate` - Syndicate Analysis (React)
 - `/trading` - Trading Calculator (React)
+
+---
+
+## Development
+
+### Building for Production
+```bash
+# Web version
+cd frontend-vite
+npm run build
+
+# Desktop version
+npm run tauri build
+```
+
+### Development Commands
+```bash
+# Web development
+npm run dev
+
+# Desktop development
+npm run tauri dev
+
+# Backend development
+python -m backend.proxy_server
+```
 
 ---
 
@@ -181,6 +269,7 @@ All file references in HTML have been updated to match this structure.
 
 - **Warframe.market** for their public API and market data
 - **Digital Extremes** for Warframe and the Warframe API
+- **Tauri** for the desktop application framework
 - **You!** For using, testing, and improving this tool
 
 ---
