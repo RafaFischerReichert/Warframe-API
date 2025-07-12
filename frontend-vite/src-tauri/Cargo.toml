@@ -19,5 +19,8 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.5", features = ["config-toml"] }
 
+[dev-dependencies]
+tokio = { version = "1.0", features = ["full"] }
+
 [features]
 # this feature is used for production builds or when `devPath`
