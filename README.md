@@ -55,34 +55,39 @@ A collection of tools for interacting with the Warframe Market API, including a 
 - **Order mode selection** (online only vs all orders)
 
 ### 🖥️ Desktop Application (Tauri)
-- **Native Desktop App:** Cross-platform desktop application
+- **Native Desktop App:** Cross-platform desktop application built with Tauri
 - **Offline Capable:** Works without internet connection for local features
 - **System Integration:** Native window controls and system tray support
 - **Fast Performance:** Rust-based backend with React frontend
+- **Modern UI:** Built with React and Vite for a responsive experience
 
 ---
 
 ## Setup Instructions
 
 ### Prerequisites
-- Python 3.x
-- Node.js 18+ (for frontend)
+- Python 3.x (for backend API)
+- Node.js 18+ (for React frontend)
 - Rust (for Tauri desktop app)
 - Modern web browser (for web version)
 
 ### Web Application Setup
 1. **Clone or download this repository.**
-2. **Start the Python proxy server:**
+2. **Install Python dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Start the Python proxy server:**
    ```bash
    python -m backend.proxy_server
    ```
-3. **Start the Vite React frontend:**
+4. **Start the Vite React frontend:**
    ```bash
    cd frontend-vite
    npm install
    npm run dev
    ```
-4. **Open your browser** and go to the address shown by Vite (usually `http://localhost:5173`).
+5. **Open your browser** and go to the address shown by Vite (usually `http://localhost:5173`).
 
 ### Desktop Application Setup (Tauri)
 1. **Install Rust and Tauri prerequisites:**
@@ -93,13 +98,16 @@ A collection of tools for interacting with the Warframe Market API, including a 
    # Install Tauri CLI
    cargo install tauri-cli
    ```
-2. **Build and run the desktop app:**
+2. **Install frontend dependencies:**
    ```bash
    cd frontend-vite
    npm install
+   ```
+3. **Build and run the desktop app:**
+   ```bash
    npm run tauri dev
    ```
-3. **For production builds:**
+4. **For production builds:**
    ```bash
    npm run tauri build
    ```
@@ -208,13 +216,35 @@ The application includes comprehensive rate limiting protection:
 
 ## Project Structure
 
-- `backend/` — Python backend code (auth_handler.py, proxy_server.py, trading_calculator.py)
-- `frontend-vite/` — Vite React frontend with Tauri integration
-  - `src/` — React components and application logic
-  - `src-tauri/` — Tauri configuration and Rust backend
-  - `public/` — Static assets
-- `data/` — Data files (syndicate_items.json, SYNDICATE_ITEMS_README.md)
-- `tests/` — Test files for backend components
+```
+Warframe-API/
+├── backend/                 # Python backend API
+│   ├── __init__.py
+│   ├── auth_handler.py     # Authentication logic
+│   ├── proxy_server.py     # Main API server
+│   └── trading_calculator.py # Trading analysis logic
+├── frontend-vite/          # React + Vite frontend with Tauri
+│   ├── src/               # React components and application logic
+│   │   ├── App.jsx        # Main application component
+│   │   ├── Login.jsx      # Authentication component
+│   │   ├── TradingCalculator.jsx # Trading analysis component
+│   │   ├── SyndicateScreen.jsx # Syndicate search component
+│   │   └── api.js         # API client utilities
+│   ├── src-tauri/         # Tauri configuration and Rust backend
+│   │   ├── src/           # Rust source code
+│   │   ├── Cargo.toml     # Rust dependencies
+│   │   ├── tauri.conf.json # Tauri configuration
+│   │   └── icons/         # Application icons
+│   ├── public/            # Static assets
+│   ├── package.json       # Node.js dependencies
+│   └── vite.config.js     # Vite configuration
+├── data/                  # Data files
+│   ├── syndicate_items.json
+│   └── SYNDICATE_ITEMS_README.md
+├── tests/                 # Test files for backend components
+├── requirements.txt       # Python dependencies
+└── README.md             # This file
+```
 
 ---
 
@@ -254,13 +284,24 @@ npm run tauri build
 ### Development Commands
 ```bash
 # Web development
+cd frontend-vite
 npm run dev
 
 # Desktop development
 npm run tauri dev
 
-# Backend development
+# Backend development (from root directory)
 python -m backend.proxy_server
+```
+
+### Testing
+```bash
+# Run Python backend tests
+python -m pytest tests/
+
+# Run frontend tests (if configured)
+cd frontend-vite
+npm test
 ```
 
 ---
@@ -270,6 +311,7 @@ python -m backend.proxy_server
 - **Warframe.market** for their public API and market data
 - **Digital Extremes** for Warframe and the Warframe API
 - **Tauri** for the desktop application framework
+- **React** and **Vite** for the modern frontend experience
 - **You!** For using, testing, and improving this tool
 
 ---
